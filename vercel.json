@@ -1,0 +1,54 @@
+{
+  "functions": {
+    "api/telegram.js": {
+      "maxDuration": 60
+    },
+    "api/bridge-worker.js": {
+      "maxDuration": 300
+    },
+    "api/admin.js": {
+      "maxDuration": 90
+    },
+    "api/userbot-auth.js": {
+      "maxDuration": 90
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/health",
+      "destination": "/api/admin?action=health"
+    },
+    {
+      "source": "/api/config-test",
+      "destination": "/api/admin?action=config"
+    },
+    {
+      "source": "/api/runtime-test",
+      "destination": "/api/admin?action=runtime"
+    },
+    {
+      "source": "/api/userbot-test",
+      "destination": "/api/admin?action=userbot-test"
+    },
+    {
+      "source": "/api/target-test",
+      "destination": "/api/admin?action=target-test"
+    },
+    {
+      "source": "/api/setup-webhook",
+      "destination": "/api/admin?action=setup-webhook"
+    },
+    {
+      "source": "/api/kick-worker",
+      "destination": "/api/admin?action=kick-worker"
+    },
+    {
+      "source": "/api/userbot-login-start",
+      "destination": "/api/userbot-auth?action=start"
+    },
+    {
+      "source": "/api/userbot-login-verify",
+      "destination": "/api/userbot-auth?action=verify"
+    }
+  ]
+}
