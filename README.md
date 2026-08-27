@@ -37,7 +37,7 @@ TELEGRAM_API_HASH=...
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_WEBHOOK_SECRET=
 WEBHOOK_SETUP_KEY=
-PUBLIC_BASE_URL=https://domain-anda.vercel.app
+BASE_URL=https://domain-anda.vercel.app
 OWNER_TELEGRAM_ID=123456789
 
 SUPABASE_URL=
@@ -59,6 +59,9 @@ MAX_RELAY_TEXT_CHARS=4000
 `TARGET_BOT_USERNAME` dapat ditulis `NamaBotTujuan` atau `@NamaBotTujuan`.
 
 `OWNER_TELEGRAM_ID` opsional tetapi disarankan. Jika diisi, hanya Telegram user ID tersebut yang dapat memakai bot relay.
+
+`BASE_URL` adalah URL root deployment production Vercel, misalnya `https://nama-project.vercel.app`. Variable ini sengaja tidak memakai prefix `PUBLIC_`, sehingga dapat disimpan sebagai environment variable Sensitive/Secret jika kebijakan Vercel Anda mewajibkannya. Jangan tambahkan `/api` atau path lain.
+
 
 ## 4. Membuat TELEGRAM_USER_SESSION
 

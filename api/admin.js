@@ -56,8 +56,8 @@ async function handleConfig(req, res) {
       ),
     SUPABASE_SERVICE_ROLE_KEY:
       Boolean(String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim()),
-    PUBLIC_BASE_URL:
-      /^https:\/\//.test(String(process.env.PUBLIC_BASE_URL || "").trim()),
+    BASE_URL:
+      /^https:\/\//.test(String(process.env.BASE_URL || "").trim()),
     BRIDGE_WORKER_SECRET:
       Boolean(String(process.env.BRIDGE_WORKER_SECRET || "").trim()),
     TARGET_BOT_USERNAME:
@@ -176,14 +176,14 @@ async function handleTargetTest(req, res) {
 async function handleSetupWebhook(req, res) {
   if (!requireKey(req, res)) return;
 
-  const base = String(process.env.PUBLIC_BASE_URL || "")
+  const base = String(process.env.BASE_URL || "")
     .trim()
     .replace(/\/+$/, "");
 
   if (!base.startsWith("https://")) {
     return res.status(500).json({
       ok: false,
-      error: "PUBLIC_BASE_URL harus URL https:// Vercel."
+      error: "BASE_URL harus URL https:// Vercel."
     });
   }
 
