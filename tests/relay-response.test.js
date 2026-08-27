@@ -41,3 +41,21 @@ test("serializes text and message id", () => {
   assert.equal(result.text, "hello");
   assert.deepEqual(result.urlButtons, []);
 });
+
+import { renderTelegramHtml } from "../lib/relay-response.js";
+
+test("renders basic Telegram formatting entities as HTML", () => {
+  const text = "Hello world";
+  const html = renderTelegramHtml(text, [
+    { type: "bold", offset: 0, length: 5 },
+    { type: "code", offset: 6, length: 5 }
+  ]);
+  assert.equal(html, "<b>Hello</b> <code>world</code>");
+});
+
+test("escapes raw HTML while preserving formatting", () => {
+  const html = renderTelegramHtml("<ok>", [
+    { type: "bold", offset: 0, length: 4 }
+  ]);
+  assert.equal(html, "<b>&lt;ok&gt;</b>");
+});

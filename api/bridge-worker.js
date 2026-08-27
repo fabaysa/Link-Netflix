@@ -53,57 +53,116 @@ function mergeButtons(messages) {
   return rows;
 }
 
+function brandingFooterHtml() {
+  return [
+    "━━━━━━━━━━━━━━━━━━",
+    '📢 <b>Grup:</b> <a href="https://t.me/ilinkinstore">https://t.me/ilinkinstore</a>',
+    '🤖 <b>Bot Auto Order:</b> <a href="https://t.me/iLinkinBot">@iLinkinBot</a>',
+    "💬 Berminat produk kami? Silakan hubungi melalui bot di atas."
+  ].join("\n");
+}
+
+function brandingFooterPlain() {
+  return [
+    "━━━━━━━━━━━━━━━━━━",
+    "📢 Grup : https://t.me/ilinkinstore",
+    "🤖 Bot Auto Order: @iLinkinBot",
+    "💬 Berminat produk kami? Silakan hubungi melalui bot di atas."
+  ].join("\n");
+}
+
+function alreadyHasBranding(text) {
+  const value = String(text || "").toLowerCase();
+  return value.includes("t.me/ilinkinstore") || value.includes("@ilinkinbot");
+}
+
 function buildReplyText(result) {
   const parts = (result.messages || [])
     .map(item => String(item.text || "").trim())
     .filter(Boolean);
 
-  return parts.join("\n\n") || "(Bot tujuan membalas tanpa teks.)";
+  let text = parts.join("\n\n") || "(Bot tujuan membalas tanpa teks.)";
+  if (!alreadyHasBranding(text)) {
+    text += `\n\n${brandingFooterPlain()}`;
+  }
+  return text;
+}
+
+function buildReplyHtml(result) {
+  const parts = (result.messages || [])
+    .map(item => String(item.html || "").trim())
+    .filter(Boolean);
+
+  let html = parts.join("\n\n") || "(Bot tujuan membalas tanpa teks.)";
+  const plain = (result.messages || []).map(item => item.text || "").join("\n");
+  if (!alreadyHasBranding(plain)) {
+    html += `\n\n${brandingFooterHtml()}`;
+  }
+  return html;
 }
 
 async function sendResultToUser(job, result) {
-  const text = buildReplyText(result);
+  const plainText = buildReplyText(result);
+  const html = buildReplyHtml(result);
   const keyboard = telegramKeyboard(mergeButtons(result.messages));
   const extra = keyboard ? { reply_markup: keyboard } : {};
 
-  // Telegram Bot API membatasi text message sekitar 4096 karakter.
-  // Untuk reply umum, chunk agar output panjang tetap kembali ke user.
-  const chunks = [];
-  for (let i = 0; i < text.length; i += 3900) {
-    chunks.push(text.slice(i, i + 3900));
-  }
-  if (!chunks.length) chunks.push("(Balasan kosong)");
+  // Pertahankan formatting Telegram target jika hasil masih muat dalam satu message.
+  // Untuk output sangat panjang, fallback ke plain text chunk agar tag HTML tidak terpotong.
+  if (html.length <= 3900) {
+    if (job.telegram_progress_message_id) {
+      try {
+        await editMessage(
+          job.telegram_chat_id,
+          job.telegram_progress_message_id,
+          html,
+          extra
+        );
+      } catch (error) {
+        console.error("edit formatted progress failed:", error);
+        await sendMessage(job.telegram_chat_id, html, extra);
+      }
+    } else {
+      await sendMessage(job.telegram_chat_id, html, extra);
+    }
+  } else {
+    const chunks = [];
+    for (let i = 0; i < plainText.length; i += 3900) {
+      chunks.push(plainText.slice(i, i + 3900));
+    }
+    if (!chunks.length) chunks.push("(Balasan kosong)");
 
-  if (job.telegram_progress_message_id) {
-    try {
-      await editPlainMessage(
-        job.telegram_chat_id,
-        job.telegram_progress_message_id,
-        chunks[0],
-        chunks.length === 1 ? extra : {}
-      );
-    } catch (error) {
-      console.error("edit progress failed:", error);
+    if (job.telegram_progress_message_id) {
+      try {
+        await editPlainMessage(
+          job.telegram_chat_id,
+          job.telegram_progress_message_id,
+          chunks[0],
+          chunks.length === 1 ? extra : {}
+        );
+      } catch (error) {
+        console.error("edit progress failed:", error);
+        await sendPlainMessage(
+          job.telegram_chat_id,
+          chunks[0],
+          chunks.length === 1 ? extra : {}
+        );
+      }
+    } else {
       await sendPlainMessage(
         job.telegram_chat_id,
         chunks[0],
         chunks.length === 1 ? extra : {}
       );
     }
-  } else {
-    await sendPlainMessage(
-      job.telegram_chat_id,
-      chunks[0],
-      chunks.length === 1 ? extra : {}
-    );
-  }
 
-  for (let i = 1; i < chunks.length; i++) {
-    await sendPlainMessage(
-      job.telegram_chat_id,
-      chunks[i],
-      i === chunks.length - 1 ? extra : {}
-    );
+    for (let i = 1; i < chunks.length; i++) {
+      await sendPlainMessage(
+        job.telegram_chat_id,
+        chunks[i],
+        i === chunks.length - 1 ? extra : {}
+      );
+    }
   }
 
   if (job.debug_mode) {
@@ -152,7 +211,7 @@ async function processOneJob(job) {
     const result = await waitForTargetReply(client, sent.sentMessageId);
 
     const storedResult = {
-      bridge: "5.0-generic-relay-vercel",
+      bridge: "5.2-branded-relay-vercel",
       target: `@${targetUsername()}`,
       messages: result.messages,
       received_at: new Date().toISOString(),
@@ -240,6 +299,6 @@ export default async function handler(req, res) {
   return res.status(202).json({
     ok: true,
     accepted: true,
-    engine: "5.0-generic-relay-vercel"
+    engine: "5.2-branded-relay-vercel"
   });
 }

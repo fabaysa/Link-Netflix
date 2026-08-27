@@ -28,7 +28,7 @@ function requireKey(req, res) {
 async function handleHealth(req, res) {
   return res.status(200).json({
     ok: true,
-    engine: "5.0-generic-relay-vercel",
+    engine: "5.2-branded-relay-vercel",
     serverlessFunctions: 4,
     userbotSessionConfigured: Boolean(process.env.TELEGRAM_USER_SESSION),
     apiIdConfigured: Boolean(process.env.TELEGRAM_API_ID),
@@ -70,7 +70,7 @@ async function handleConfig(req, res) {
 
   return res.status(missingOrInvalid.length ? 500 : 200).json({
     ok: missingOrInvalid.length === 0,
-    engine: "5.0-generic-relay-vercel",
+    engine: "5.2-branded-relay-vercel",
     checks,
     missingOrInvalid,
     note:
@@ -87,7 +87,7 @@ async function handleRuntime(req, res) {
 
     return res.status(200).json({
       ok: true,
-      engine: "5.0-generic-relay-vercel",
+      engine: "5.2-branded-relay-vercel",
       apiCredentialsReadable: Boolean(apiId && apiHash),
       teleprotoImport: true,
       exports: {
@@ -100,7 +100,7 @@ async function handleRuntime(req, res) {
   } catch (error) {
     return res.status(500).json({
       ok: false,
-      engine: "5.0-generic-relay-vercel",
+      engine: "5.2-branded-relay-vercel",
       stage: "teleproto_runtime",
       error: error?.message || String(error)
     });
@@ -121,7 +121,7 @@ async function handleUserbotTest(req, res) {
 
     return res.status(200).json({
       ok: true,
-      engine: "5.0-generic-relay-vercel",
+      engine: "5.2-branded-relay-vercel",
       account: {
         id: String(me?.id || ""),
         username: me?.username || null,
@@ -136,7 +136,7 @@ async function handleUserbotTest(req, res) {
   } catch (error) {
     return res.status(500).json({
       ok: false,
-      engine: "5.0-generic-relay-vercel",
+      engine: "5.2-branded-relay-vercel",
       error: error?.message || String(error)
     });
   } finally {
@@ -158,7 +158,7 @@ async function handleTargetTest(req, res) {
     return res.status(result.ok ? 200 : 504).json({
       ...result,
       target: `@${targetUsername()}`,
-      engine: "5.0-generic-relay-vercel"
+      engine: "5.2-branded-relay-vercel"
     });
   } catch (error) {
     return res.status(500).json({

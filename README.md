@@ -1,6 +1,14 @@
-# Telegram Userbot Relay — Vercel + Supabase
+# Telegram Userbot Relay v5.2 — Vercel + Supabase
 
-Versi 5.0 mengubah project lama dari checker khusus menjadi **relay teks generik**.
+Versi 5.2 melanjutkan project relay generik dan menambahkan branding/formatting. Versi awal 5.0 mengubah project lama dari checker khusus menjadi **relay teks generik**.
+
+## Branding v5.2
+
+- Pesan `/start` memakai sapaan iLinkin Store.
+- Hasil relay mempertahankan formatting Telegram dari bot tujuan (bold/code/link) jika memungkinkan.
+- Footer Grup dan Bot Auto Order ditambahkan otomatis bila belum ada di balasan target.
+- Inline URL button dari bot tujuan tetap diteruskan.
+
 
 ## Alur
 

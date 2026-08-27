@@ -49,21 +49,32 @@ async function handleMessage(message) {
   if (/^\/start(?:@\w+)?$/i.test(rawText.trim())) {
     await upsertUser(from);
     await sendMessage(chatId, [
-      "👋 <b>Telegram Userbot Relay</b>",
+      "👋 <b>Selamat datang di iLinkin Store!</b>",
       "",
-      "Kirim <b>teks apa pun</b> ke bot ini.",
-      "Teks akan diteruskan oleh akun Telegram userbot ke bot tujuan, lalu balasan bot tujuan dikirim kembali ke sini.",
+      "✨ Layanan otomatis siap digunakan.",
+      "Silakan kirim teks yang ingin diproses dan tunggu sebentar sampai hasilnya dikirim kembali ke chat ini.",
       "",
-      "URL button pada balasan juga akan diteruskan sebagai inline button.",
-      "Engine: <code>5.0-generic-relay-vercel</code>"
-    ].join("\n"));
+      "━━━━━━━━━━━━━━━━━━",
+      "📢 <b>Grup:</b> https://t.me/ilinkinstore",
+      "🤖 <b>Bot Auto Order:</b> @iLinkinBot",
+      "💬 Berminat produk kami? Silakan hubungi melalui bot di atas."
+    ].join("\n"), {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "📢 Join Grup", url: "https://t.me/ilinkinstore" },
+            { text: "🤖 Auto Order", url: "https://t.me/iLinkinBot" }
+          ]
+        ]
+      }
+    });
     return;
   }
 
   if (/^\/engine(?:@\w+)?$/i.test(rawText.trim())) {
     await sendMessage(
       chatId,
-      "⚙️ Engine aktif: <code>5.0-generic-relay-vercel</code>"
+      "⚙️ Engine aktif: <code>5.2-branded-relay-vercel</code>"
     );
     return;
   }
@@ -139,7 +150,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       service: "telegram-webhook",
-      engine: "5.0-generic-relay-vercel"
+      engine: "5.2-branded-relay-vercel"
     });
   }
 
