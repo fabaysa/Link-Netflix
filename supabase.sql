@@ -6,6 +6,7 @@ create table if not exists public.gemini_checker_users (
   username text,
   first_name text,
   last_name text,
+  awaiting_demo boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

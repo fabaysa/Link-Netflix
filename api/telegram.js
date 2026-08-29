@@ -30,6 +30,28 @@ async function upsertUser(from) {
   if (error) throw error;
 }
 
+async function setAwaitingDemo(from, awaiting) {
+  if (!from?.id) return;
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("gemini_checker_users")
+    .update({ awaiting_demo: Boolean(awaiting), updated_at: new Date().toISOString() })
+    .eq("telegram_user_id", from.id);
+  if (error) throw error;
+}
+
+async function isAwaitingDemo(from) {
+  if (!from?.id) return false;
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("gemini_checker_users")
+    .select("awaiting_demo")
+    .eq("telegram_user_id", from.id)
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data?.awaiting_demo);
+}
+
 function startMessage() {
   return [
     "👋 <b>Hello Freze!</b>",
@@ -131,12 +153,25 @@ async function handleMessage(message) {
   }
 
   if (!rawText) {
-    await sendMessage(chatId, "❌ Saat ini bot menerima pesan teks untuk mode demo.");
+    await sendMessage(chatId, "❌ Kirim teks demo setelah menekan tombol 🗝️ Generate Cookie.");
     return;
   }
 
-  // Do not accept or process real session cookies / login credentials.
-  // The bot always returns a safe mock result for arbitrary text input.
+  const awaiting = await isAwaitingDemo(from);
+  if (!awaiting) {
+    await sendMessage(chatId, [
+      "ℹ️ Tekan dulu tombol <b>🗝️ Generate Cookie</b> di menu utama.",
+      "",
+      "Setelah bot membalas instruksi, baru kirim teks demo/test."
+    ].join("\n"));
+    return;
+  }
+
+  // Reset the one-shot button state before processing the next message.
+  await setAwaitingDemo(from, false);
+
+  // Safe demo only: the submitted text is not forwarded as a session cookie
+  // or login credential to a third-party service.
   await upsertUser(from);
   const progress = await sendMessage(chatId, "⏳ <b>Membuat hasil demo...</b>");
 
@@ -185,12 +220,16 @@ async function handleCallbackQuery(query) {
   await answerCallbackQuery(query.id);
 
   if (query.data === "generate_cookie_demo") {
+    await upsertUser(query.from);
+    await setAwaitingDemo(query.from, true);
     await sendMessage(chatId, [
       "🗝️ <b>Generate Cookie — Mode Demo</b>",
       "",
-      "Silakan kirim teks demo/test sekarang.",
+      "✅ Tombol sudah aktif.",
       "",
-      "⚠️ Jangan kirim cookie sesi Netflix, password, token login, atau kredensial akun apa pun."
+      "Silakan kirim <b>teks demo/test</b> pada pesan berikutnya.",
+      "",
+      "⚠️ Jangan kirim cookie sesi, password, token login, atau kredensial akun apa pun."
     ].join("\n"));
     return;
   }

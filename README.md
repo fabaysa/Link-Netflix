@@ -45,3 +45,10 @@ DEMO-123
 ```
 
 Bot akan mengembalikan contoh link placeholder untuk PC/Laptop, HP/Mobile, dan TV/Smart TV.
+
+
+## v5.4 safe flow
+- `/start` sends the menu first.
+- `🗝️ Generate Cookie` must be clicked before the next text message is accepted.
+- The next text is one-shot demo input only.
+- Real session cookies, passwords, and login tokens are not processed or forwarded.
