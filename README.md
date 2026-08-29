@@ -1,55 +1,61 @@
-# Telegram Bot — Safe Demo Flow
+# Telegram Account Auto Sender v2
 
-Project ini mempertahankan struktur Vercel + Supabase, tetapi alur token/login pihak ketiga diubah menjadi **mode demo aman**.
+Pengirim otomatis yang **menggunakan akun Telegram Anda sendiri** lewat MTProto/GramJS. Control bot hanya dipakai sebagai panel untuk mengubah target, interval, dan teks. Pesan sebenarnya dikirim oleh akun Telegram yang Anda hubungkan.
 
-## Alur bot
+## Fitur
 
-1. Pengguna mengetik `/start`.
-2. Bot menampilkan tombol **🗝️ Generate Cookie**.
-3. Setelah tombol ditekan, bot meminta input demo.
-4. Input yang valid harus diawali `DEMO:` dan diteruskan ke bot target untuk pengujian relay.
-5. Balasan target diteruskan kembali dengan sanitasi terhadap pola credential/login-token.
-6. Cookie sesi, password, dan token login ditolak dan tidak diteruskan.
+- Login akun Telegram dengan `API_ID`, `API_HASH`, dan session string.
+- Jika `SESSION_STRING` kosong, program meminta nomor, kode Telegram, dan password 2FA saat login pertama kali.
+- Kirim ke grup, channel, atau chat/bot yang memang dapat diakses akun tersebut.
+- Interval bisa diubah, minimum 30 detik.
+- Teks bisa diubah tanpa deploy ulang.
+- `/on`, `/off`, `/status`, `/sendnow`.
+- Konfigurasi tersimpan di `data/state.json`.
 
-## Environment Variables
+## Setup
 
-Gunakan variable lama yang memang dibutuhkan project Anda, misalnya:
+1. Buat API credentials di `my.telegram.org`.
+2. Buat bot kontrol dengan BotFather.
+3. Salin `.env.example` menjadi `.env`.
+4. Isi `API_ID`, `API_HASH`, `CONTROL_BOT_TOKEN`, dan `ADMIN_USER_ID`.
+5. Jalankan:
 
-```text
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_WEBHOOK_SECRET=
-WEBHOOK_SETUP_KEY=
-BASE_URL=https://domain-anda.vercel.app
-OWNER_TELEGRAM_ID=123456789
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
+```bash
+npm install
+npm start
 ```
 
-Fitur `TARGET_BOT_USERNAME`, `TELEGRAM_USER_SESSION`, dan relay MTProto tidak dipakai pada alur demo ini.
+Pada login pertama, terminal akan meminta nomor, kode Telegram, dan password 2FA bila aktif. Setelah berhasil, program mencetak `SESSION_STRING`. Simpan nilai tersebut ke `.env` supaya restart berikutnya tidak meminta kode lagi.
 
-## Contoh penggunaan
+## Perintah control bot
 
 ```text
 /start
+/settarget @nama_channel
+/setinterval 30
+/settext Promo hari ini tersedia!
+/on
+/off
+/status
+/sendnow
 ```
 
-Tekan:
+Contoh target:
 
 ```text
-🗝️ Generate Cookie
+/settarget @nama_channel
+/settarget -1001234567890
+/settarget @username_bot_tujuan
 ```
 
-Kemudian kirim misalnya:
+Akun Telegram yang terhubung harus bisa mengakses chat target. Untuk channel, akun tersebut harus punya hak yang diperlukan untuk mengirim. Untuk chat dengan bot lain, akun pengguna dapat mengirim pesan ke bot yang tersedia.
 
-```text
-DEMO-123
-```
+## Deployment
 
-Bot akan mengembalikan contoh link placeholder untuk PC/Laptop, HP/Mobile, dan TV/Smart TV.
+Ini adalah proses yang harus **selalu hidup**, karena interval berjalan dengan timer Node.js. Gunakan VPS atau worker/service yang persistent (mis. Railway/Render worker/VPS). Jangan mengandalkan Vercel Functions untuk timer 30 detik.
 
+## Keamanan
 
-## v5.4 safe flow
-- `/start` sends the menu first.
-- `🗝️ Generate Cookie` must be clicked before the next text message is accepted.
-- The next text is one-shot demo input only.
-- Real session cookies, passwords, and login tokens are not processed or forwarded.
+`SESSION_STRING` memberi akses ke sesi akun Telegram. Jangan commit `.env`, jangan membagikannya, dan simpan sebagai secret environment variable.
+
+Gunakan auto-sender hanya pada grup/channel/chat yang mengizinkan pengiriman otomatis agar tidak dianggap spam oleh Telegram.

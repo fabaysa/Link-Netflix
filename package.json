@@ -1,18 +1,14 @@
 {
-  "name": "telegram-userbot-relay-vercel-supabase",
-  "version": "5.5.0",
+  "name": "telegram-account-auto-sender",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": "24.x"
-  },
   "scripts": {
-    "dev": "vercel dev",
-    "test": "node --test tests/*.test.js"
+    "start": "node src/index.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.3",
-    "@vercel/functions": "^3.9.3",
-    "teleproto": "1.228.5"
+    "dotenv": "^16.4.7",
+    "grammy": "^1.38.3",
+    "telegram": "^2.26.22"
   }
 }
