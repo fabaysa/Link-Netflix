@@ -6,9 +6,10 @@ Project ini mempertahankan struktur Vercel + Supabase, tetapi alur token/login p
 
 1. Pengguna mengetik `/start`.
 2. Bot menampilkan tombol **🗝️ Generate Cookie**.
-3. Setelah tombol ditekan, bot meminta teks demo/test.
-4. Bot membalas contoh hasil per-device dengan placeholder URL.
-5. Tidak ada cookie sesi, password, token login, atau kredensial pihak ketiga yang diproses.
+3. Setelah tombol ditekan, bot meminta input demo.
+4. Input yang valid harus diawali `DEMO:` dan diteruskan ke bot target untuk pengujian relay.
+5. Balasan target diteruskan kembali dengan sanitasi terhadap pola credential/login-token.
+6. Cookie sesi, password, dan token login ditolak dan tidak diteruskan.
 
 ## Environment Variables
 

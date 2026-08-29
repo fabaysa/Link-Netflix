@@ -1,6 +1,9 @@
 import { waitUntil } from "@vercel/functions";
 import { getSupabase } from "../lib/supabase.js";
 import { sendMessage } from "../lib/telegram-bot.js";
+import { enqueueJob } from "../lib/queue.js";
+import { kickBridgeWorker } from "../lib/kick-worker.js";
+import { isSafeDemoInput } from "../lib/safe-relay.js";
 
 function esc(value = "") {
   return String(value)
@@ -105,6 +108,19 @@ function safeDemoResult() {
   ].join("\n");
 }
 
+async function enqueueSafeDemoJob({ from, chatId, payload }) {
+  const progress = await sendMessage(chatId, "⏳ <b>Memproses demo...</b>");
+  await enqueueJob({
+    telegramUserId: from?.id,
+    chatId,
+    inputType: "text",
+    payload,
+    progressMessageId: progress.message_id,
+    debugMode: false
+  });
+  await kickBridgeWorker();
+}
+
 async function handleMessage(message) {
   const chatId = message.chat?.id;
   const from = message.from;
@@ -153,7 +169,7 @@ async function handleMessage(message) {
   }
 
   if (!rawText) {
-    await sendMessage(chatId, "❌ Kirim teks demo setelah menekan tombol 🗝️ Generate Cookie.");
+    await sendMessage(chatId, "❌ Kirim input demo setelah menekan tombol 🗝️ Generate Cookie.");
     return;
   }
 
@@ -162,30 +178,30 @@ async function handleMessage(message) {
     await sendMessage(chatId, [
       "ℹ️ Tekan dulu tombol <b>🗝️ Generate Cookie</b> di menu utama.",
       "",
-      "Setelah bot membalas instruksi, baru kirim teks demo/test."
+      "Setelah bot membalas instruksi, baru kirim input demo."
     ].join("\n"));
     return;
   }
 
-  // Reset the one-shot button state before processing the next message.
+  if (!isSafeDemoInput(rawText)) {
+    await setAwaitingDemo(from, false);
+    await sendMessage(chatId, [
+      "⛔ Input ditolak.",
+      "",
+      "Mode relay ini hanya menerima input demo yang diawali <code>DEMO:</code>.",
+      "Jangan kirim cookie sesi, password, atau token login."
+    ].join("\n"));
+    return;
+  }
+
   await setAwaitingDemo(from, false);
-
-  // Safe demo only: the submitted text is not forwarded as a session cookie
-  // or login credential to a third-party service.
   await upsertUser(from);
-  const progress = await sendMessage(chatId, "⏳ <b>Membuat hasil demo...</b>");
-
   waitUntil((async () => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 450));
-      await import("../lib/telegram-bot.js").then(({ editMessage }) =>
-        editMessage(chatId, progress.message_id, safeDemoResult())
-      );
+      await enqueueSafeDemoJob({ from, chatId, payload: rawText });
     } catch (error) {
-      console.error("demo result failed", error);
-      try {
-        await sendMessage(chatId, `💔 Error: <code>${esc(error.message || String(error))}</code>`);
-      } catch {}
+      console.error("safe relay enqueue failed", error);
+      await sendMessage(chatId, `💔 Error: <code>${esc(error.message || String(error))}</code>`);
     }
   })());
 }
@@ -227,9 +243,9 @@ async function handleCallbackQuery(query) {
       "",
       "✅ Tombol sudah aktif.",
       "",
-      "Silakan kirim <b>teks demo/test</b> pada pesan berikutnya.",
+      "Silakan kirim <b>input demo</b> pada pesan berikutnya.",
       "",
-      "⚠️ Jangan kirim cookie sesi, password, token login, atau kredensial akun apa pun."
+      "⚠️ Gunakan format <code>DEMO:contoh</code>. Jangan kirim cookie sesi, password, token login, atau kredensial akun apa pun."
     ].join("\n"));
     return;
   }

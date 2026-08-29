@@ -19,6 +19,7 @@ import {
   sendPlainMessage
 } from "../lib/telegram-bot.js";
 import { kickBridgeWorker } from "../lib/kick-worker.js";
+import { sanitizeTargetText } from "../lib/safe-relay.js";
 
 function esc(value = "") {
   return String(value)
@@ -210,10 +211,16 @@ async function processOneJob(job) {
     const sent = await sendRelayText(client, job.input_payload);
     const result = await waitForTargetReply(client, sent.sentMessageId);
 
+    const safeMessages = (result.messages || []).map(item => ({
+      ...item,
+      text: sanitizeTargetText(item.text),
+      html: sanitizeTargetText(item.text)
+    }));
+
     const storedResult = {
-      bridge: "5.2-branded-relay-vercel",
+      bridge: "5.5-safe-demo-relay-vercel",
       target: `@${targetUsername()}`,
-      messages: result.messages,
+      messages: safeMessages,
       received_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
     };
@@ -223,7 +230,7 @@ async function processOneJob(job) {
       target_result_message_id: result.resultMessageId
     });
 
-    await sendResultToUser(job, result);
+    await sendResultToUser(job, { ...result, messages: safeMessages });
 
     return {
       ok: true,
