@@ -1,45 +1,18 @@
-# Telegram Userbot Relay v5.2 — Vercel + Supabase
+# Telegram Bot — Safe Demo Flow
 
-Versi 5.2 melanjutkan project relay generik dan menambahkan branding/formatting. Versi awal 5.0 mengubah project lama dari checker khusus menjadi **relay teks generik**.
+Project ini mempertahankan struktur Vercel + Supabase, tetapi alur token/login pihak ketiga diubah menjadi **mode demo aman**.
 
-## Branding v5.2
+## Alur bot
 
-- Pesan `/start` memakai sapaan iLinkin Store.
-- Hasil relay mempertahankan formatting Telegram dari bot tujuan (bold/code/link) jika memungkinkan.
-- Footer Grup dan Bot Auto Order ditambahkan otomatis bila belum ada di balasan target.
-- Inline URL button dari bot tujuan tetap diteruskan.
+1. Pengguna mengetik `/start`.
+2. Bot menampilkan tombol **🗝️ Generate Cookie**.
+3. Setelah tombol ditekan, bot meminta teks demo/test.
+4. Bot membalas contoh hasil per-device dengan placeholder URL.
+5. Tidak ada cookie sesi, password, token login, atau kredensial pihak ketiga yang diproses.
 
+## Environment Variables
 
-## Alur
-
-1. Anda mengirim teks ke Telegram Bot milik Anda.
-2. Webhook Vercel menyimpan job ke Supabase.
-3. Worker Vercel login ke akun Telegram biasa melalui MTProto (`TELEGRAM_USER_SESSION`).
-4. Userbot mengirim **teks yang sama** ke bot tujuan (`TARGET_BOT_USERNAME`).
-5. Worker menunggu balasan bot tujuan.
-6. Teks balasan dikirim kembali ke chat Telegram Bot Anda.
-7. Tombol URL pada balasan bot tujuan ikut dibuat ulang sebagai inline button pada bot Anda.
-
-Job diproses **serial** agar balasan dari bot tujuan tidak tertukar antara dua request.
-
-## 1. Supabase
-
-Jalankan seluruh isi `supabase.sql` di **Supabase → SQL Editor**.
-
-Jika tabel project v4 sudah ada, SQL ini tetap kompatibel dan dapat dijalankan ulang.
-
-## 2. Telegram API ID / Hash
-
-Buka `https://my.telegram.org` menggunakan akun Telegram biasa yang akan dijadikan userbot, lalu buat API credentials.
-
-Set di Vercel:
-
-```text
-TELEGRAM_API_ID=...
-TELEGRAM_API_HASH=...
-```
-
-## 3. Environment Variables Vercel
+Gunakan variable lama yang memang dibutuhkan project Anda, misalnya:
 
 ```text
 TELEGRAM_BOT_TOKEN=
@@ -47,96 +20,28 @@ TELEGRAM_WEBHOOK_SECRET=
 WEBHOOK_SETUP_KEY=
 BASE_URL=https://domain-anda.vercel.app
 OWNER_TELEGRAM_ID=123456789
-
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
-
-TELEGRAM_API_ID=
-TELEGRAM_API_HASH=
-TELEGRAM_USER_SESSION=
-
-TARGET_BOT_USERNAME=NamaBotTujuan
-BRIDGE_WORKER_SECRET=
-
-RELAY_TIMEOUT_MS=120000
-RELAY_POLL_MS=1200
-RELAY_SETTLE_MS=2200
-MAX_RELAY_TEXT_CHARS=4000
 ```
 
-`TARGET_BOT_USERNAME` dapat ditulis `NamaBotTujuan` atau `@NamaBotTujuan`.
+Fitur `TARGET_BOT_USERNAME`, `TELEGRAM_USER_SESSION`, dan relay MTProto tidak dipakai pada alur demo ini.
 
-`OWNER_TELEGRAM_ID` opsional tetapi disarankan. Jika diisi, hanya Telegram user ID tersebut yang dapat memakai bot relay.
-
-`BASE_URL` adalah URL root deployment production Vercel, misalnya `https://nama-project.vercel.app`. Variable ini sengaja tidak memakai prefix `PUBLIC_`, sehingga dapat disimpan sebagai environment variable Sensitive/Secret jika kebijakan Vercel Anda mewajibkannya. Jangan tambahkan `/api` atau path lain.
-
-
-## 4. Membuat TELEGRAM_USER_SESSION
-
-Setelah deploy dan API ID/Hash sudah tersedia, buka:
+## Contoh penggunaan
 
 ```text
-https://DOMAIN/setup-userbot.html
+/start
 ```
 
-Masukkan `WEBHOOK_SETUP_KEY`, nomor Telegram userbot, kode login Telegram, dan password 2FA jika diminta.
-
-Setelah berhasil, copy `sessionString` ke Vercel sebagai:
+Tekan:
 
 ```text
-TELEGRAM_USER_SESSION=...
+🗝️ Generate Cookie
 ```
 
-Lalu Redeploy.
-
-Session string adalah kredensial login penuh akun Telegram tersebut. Simpan sebagai secret dan jangan commit ke repository.
-
-## 5. Setup webhook
-
-Buka:
+Kemudian kirim misalnya:
 
 ```text
-https://DOMAIN/api/setup-webhook?key=WEBHOOK_SETUP_KEY_ANDA
+DEMO-123
 ```
 
-Cek health:
-
-```text
-https://DOMAIN/api/health
-```
-
-Tes userbot + resolve bot tujuan:
-
-```text
-https://DOMAIN/api/userbot-test?key=WEBHOOK_SETUP_KEY_ANDA
-```
-
-Tes percakapan `/start` ke bot tujuan:
-
-```text
-https://DOMAIN/api/target-test?key=WEBHOOK_SETUP_KEY_ANDA
-```
-
-## 6. Penggunaan
-
-Kirim pesan teks biasa ke bot Anda. Contoh:
-
-```text
-ABC-123-XYZ
-```
-
-Bot Anda akan menampilkan progress, userbot meneruskan `ABC-123-XYZ` ke bot tujuan, kemudian progress tersebut diubah menjadi balasan dari bot tujuan.
-
-Jika balasan bot tujuan memiliki URL button, button tersebut ikut tampil pada bot Anda.
-
-Untuk debug satu request:
-
-```text
-/debug ABC-123-XYZ
-```
-
-Debug menambahkan target, Job ID, jumlah message, dan ID message terakhir.
-
-## Catatan Vercel
-
-Project ini menggunakan pola **connect → kirim → poll balasan → disconnect** pada setiap job. Ini cocok untuk Vercel tanpa worker VPS persisten, selama bot tujuan membalas sebelum batas `RELAY_TIMEOUT_MS` dan batas durasi function Vercel.
+Bot akan mengembalikan contoh link placeholder untuk PC/Laptop, HP/Mobile, dan TV/Smart TV.

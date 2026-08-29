@@ -1,9 +1,6 @@
 import { waitUntil } from "@vercel/functions";
 import { getSupabase } from "../lib/supabase.js";
 import { sendMessage } from "../lib/telegram-bot.js";
-import { maxRelayChars, normalizeRelayText } from "../lib/input.js";
-import { enqueueJob } from "../lib/queue.js";
-import { kickBridgeWorker } from "../lib/kick-worker.js";
 
 function esc(value = "") {
   return String(value)
@@ -11,7 +8,6 @@ function esc(value = "") {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
 }
-
 
 function ownerAllowed(from) {
   const configured = String(process.env.OWNER_TELEGRAM_ID || "").trim();
@@ -34,114 +30,173 @@ async function upsertUser(from) {
   if (error) throw error;
 }
 
+function startMessage() {
+  return [
+    "👋 <b>Hello Freze!</b>",
+    "",
+    "🤖 <b>Netflix NFT Token Generator Bot</b>",
+    "",
+    "🗝️ <b>Generate Cookie</b>",
+    "Kirim data <b>demo/test</b> setelah menekan tombol di bawah untuk melihat format hasil.",
+    "",
+    "📱 <b>Supported Devices:</b>",
+    "• 🖥️ PC/Laptop",
+    "• 📱 HP/Mobile",
+    "• 📺 TV/Smart TV",
+    "",
+    "⚠️ <b>Penting:</b> Jangan kirim cookie sesi, password, token login, atau kredensial akun.",
+    "",
+    "📖 Ketik /help untuk bantuan."
+  ].join("\n");
+}
+
+function safeDemoResult() {
+  const expires = new Date(Date.now() + 60 * 60 * 1000)
+    .toISOString()
+    .replace("T", " ")
+    .replace(".000Z", " UTC");
+
+  return [
+    "✅ <b>Demo Token Berhasil Dibuat!</b>",
+    "",
+    "🔗 <b>Demo Links by Device:</b>",
+    "",
+    "🖥️ <b>PC / Laptop:</b>",
+    "<code>https://example.com/?demo_token=DEMO-PC-TOKEN</code>",
+    "",
+    "📱 <b>HP / Mobile:</b>",
+    "<code>https://example.com/unsupported?demo_token=DEMO-MOBILE-TOKEN</code>",
+    "",
+    "📺 <b>TV / Smart TV:</b>",
+    "<code>https://example.com/tv9?demo_token=DEMO-TV-TOKEN</code>",
+    "",
+    `⏰ <b>Expired:</b> ${esc(expires)}`,
+    "",
+    "⚠️ <b>Penting:</b> Ini hanya data demo dan tidak digunakan untuk login layanan pihak ketiga.",
+    "",
+    "💡 Untuk penggunaan yang sah, gunakan API resmi dan mekanisme autentikasi yang didukung layanan.",
+    "",
+    "KETIK /start untuk kembali ke menu utama",
+    "",
+    "📢 <b>Grup:</b> <a href=\"https://t.me/ilinkinstore\">iLinkin Store</a>",
+    "🤖 <b>Bot Auto Order:</b> @iLinkinBot"
+  ].join("\n");
+}
+
 async function handleMessage(message) {
   const chatId = message.chat?.id;
   const from = message.from;
   if (!chatId) return;
 
-  const rawText = typeof message.text === "string" ? message.text : "";
+  const rawText = typeof message.text === "string" ? message.text.trim() : "";
 
   if (!ownerAllowed(from)) {
     await sendMessage(chatId, "⛔ Bot ini bersifat private.");
     return;
   }
 
-  if (/^\/start(?:@\w+)?$/i.test(rawText.trim())) {
+  if (/^\/start(?:@\w+)?$/i.test(rawText)) {
     await upsertUser(from);
-    await sendMessage(chatId, [
-      "👋 <b>Selamat datang di iLinkin Store!</b>",
-      "",
-      "✨ Layanan otomatis siap digunakan.",
-      "Silakan kirim teks yang ingin diproses dan tunggu sebentar sampai hasilnya dikirim kembali ke chat ini.",
-      "",
-      "━━━━━━━━━━━━━━━━━━",
-      "📢 <b>Grup:</b> https://t.me/ilinkinstore",
-      "🤖 <b>Bot Auto Order:</b> @iLinkinBot",
-      "💬 Berminat produk kami? Silakan hubungi melalui bot di atas."
-    ].join("\n"), {
+    await sendMessage(chatId, startMessage(), {
       reply_markup: {
         inline_keyboard: [
+          [{ text: "🗝️ Generate Cookie", callback_data: "generate_cookie_demo" }],
           [
-            { text: "📢 Join Grup", url: "https://t.me/ilinkinstore" },
-            { text: "🤖 Auto Order", url: "https://t.me/iLinkinBot" }
-          ]
+            { text: "📖 Bantuan / tutor", callback_data: "help" },
+            { text: "🛒 Order cookies", url: "https://t.me/iLinkinBot" }
+          ],
+          [{ text: "👥 Grup admin", url: "https://t.me/ilinkinstore" }]
         ]
       }
     });
     return;
   }
 
-  if (/^\/engine(?:@\w+)?$/i.test(rawText.trim())) {
-    await sendMessage(
-      chatId,
-      "⚙️ Engine aktif: <code>5.2-branded-relay-vercel</code>"
-    );
+  if (/^\/help(?:@\w+)?$/i.test(rawText)) {
+    await sendMessage(chatId, [
+      "📖 <b>Bantuan</b>",
+      "",
+      "1. Tekan <b>🗝️ Generate Cookie</b>.",
+      "2. Kirim teks demo/test apa saja.",
+      "3. Bot akan membalas dengan contoh format link per device.",
+      "",
+      "⚠️ Jangan kirim cookie sesi, password, token login, atau kredensial akun."
+    ].join("\n"));
+    return;
+  }
+
+  if (/^\/engine(?:@\w+)?$/i.test(rawText)) {
+    await sendMessage(chatId, "⚙️ <b>Engine:</b> <code>safe-demo-token-flow</code>");
     return;
   }
 
   if (!rawText) {
-    await sendMessage(chatId, "❌ Saat ini relay menerima pesan teks.");
+    await sendMessage(chatId, "❌ Saat ini bot menerima pesan teks untuk mode demo.");
     return;
   }
 
-  const debugMode = /^\/debug(?:@\w+)?\s+/i.test(rawText);
-  const stripped = debugMode
-    ? rawText.replace(/^\/debug(?:@\w+)?\s+/i, "")
-    : rawText;
-  const payload = normalizeRelayText(stripped);
-
-  if (!payload.trim()) {
-    await sendMessage(chatId, "❌ Teks kosong.");
-    return;
-  }
-
-  if (payload.length > maxRelayChars()) {
-    await sendMessage(
-      chatId,
-      `❌ Teks terlalu panjang: <b>${payload.length}</b> karakter. Maksimal <b>${maxRelayChars()}</b> karakter per relay.`
-    );
-    return;
-  }
-
+  // Do not accept or process real session cookies / login credentials.
+  // The bot always returns a safe mock result for arbitrary text input.
   await upsertUser(from);
+  const progress = await sendMessage(chatId, "⏳ <b>Membuat hasil demo...</b>");
 
-  const progress = await sendMessage(
-    chatId,
-    "⏳ <b>Meneruskan pesan ke bot tujuan...</b>"
-  );
-
-  const job = await enqueueJob({
-    telegramUserId: from?.id,
-    chatId,
-    inputType: "text",
-    payload,
-    progressMessageId: progress.message_id,
-    debugMode
-  });
-
-  waitUntil(
-    kickBridgeWorker().catch(error => {
-      console.error("kickBridgeWorker failed:", error);
-    })
-  );
-
-  console.log(`Queued relay job ${job.id}`);
+  waitUntil((async () => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 450));
+      await import("../lib/telegram-bot.js").then(({ editMessage }) =>
+        editMessage(chatId, progress.message_id, safeDemoResult())
+      );
+    } catch (error) {
+      console.error("demo result failed", error);
+      try {
+        await sendMessage(chatId, `💔 Error: <code>${esc(error.message || String(error))}</code>`);
+      } catch {}
+    }
+  })());
 }
 
 async function processUpdate(update) {
   try {
     if (update?.message) await handleMessage(update.message);
+    if (update?.callback_query) await handleCallbackQuery(update.callback_query);
   } catch (error) {
     console.error(error);
     try {
-      const chatId = update?.message?.chat?.id;
-      if (chatId) {
-        await sendMessage(
-          chatId,
-          `💔 Terjadi error server: <code>${esc(error.message)}</code>`
-        );
-      }
+      const chatId = update?.message?.chat?.id || update?.callback_query?.message?.chat?.id;
+      if (chatId) await sendMessage(chatId, `💔 Terjadi error server: <code>${esc(error.message)}</code>`);
     } catch {}
+  }
+}
+
+async function answerCallbackQuery(callbackQueryId) {
+  try {
+    const { botApi } = await import("../lib/telegram-bot.js");
+    await botApi("answerCallbackQuery", {
+      callback_query_id: callbackQueryId
+    });
+  } catch (error) {
+    console.error("answerCallbackQuery failed", error);
+  }
+}
+
+async function handleCallbackQuery(query) {
+  const chatId = query?.message?.chat?.id;
+  if (!chatId) return;
+  await answerCallbackQuery(query.id);
+
+  if (query.data === "generate_cookie_demo") {
+    await sendMessage(chatId, [
+      "🗝️ <b>Generate Cookie — Mode Demo</b>",
+      "",
+      "Silakan kirim teks demo/test sekarang.",
+      "",
+      "⚠️ Jangan kirim cookie sesi Netflix, password, token login, atau kredensial akun apa pun."
+    ].join("\n"));
+    return;
+  }
+
+  if (query.data === "help") {
+    await sendMessage(chatId, "📖 Tekan <b>🗝️ Generate Cookie</b>, lalu kirim teks demo/test untuk melihat contoh hasil.");
   }
 }
 
@@ -150,7 +205,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       service: "telegram-webhook",
-      engine: "5.2-branded-relay-vercel"
+      engine: "safe-demo-token-flow"
     });
   }
 
