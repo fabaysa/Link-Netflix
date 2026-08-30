@@ -14,9 +14,7 @@ function esc(value = "") {
 
 
 function ownerAllowed(from) {
-  const configured = String(process.env.OWNER_TELEGRAM_ID || "").trim();
-  if (!configured) return true;
-  return String(from?.id || "") === configured;
+  return true;
 }
 
 async function upsertUser(from) {
