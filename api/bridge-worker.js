@@ -38,6 +38,7 @@ function telegramKeyboard(urlButtons) {
     .map(row =>
       (row || [])
         .filter(button => button?.text && button?.url)
+        .filter(button => !/order/i.test(button.text))
         .map(button => ({ text: button.text, url: button.url }))
     )
     .filter(row => row.length);
