@@ -1,61 +1,142 @@
-# Telegram Account Auto Sender v2
+# Telegram Userbot Relay v5.2 — Vercel + Supabase
 
-Pengirim otomatis yang **menggunakan akun Telegram Anda sendiri** lewat MTProto/GramJS. Control bot hanya dipakai sebagai panel untuk mengubah target, interval, dan teks. Pesan sebenarnya dikirim oleh akun Telegram yang Anda hubungkan.
+Versi 5.2 melanjutkan project relay generik dan menambahkan branding/formatting. Versi awal 5.0 mengubah project lama dari checker khusus menjadi **relay teks generik**.
 
-## Fitur
+## Branding v5.2
 
-- Login akun Telegram dengan `API_ID`, `API_HASH`, dan session string.
-- Jika `SESSION_STRING` kosong, program meminta nomor, kode Telegram, dan password 2FA saat login pertama kali.
-- Kirim ke grup, channel, atau chat/bot yang memang dapat diakses akun tersebut.
-- Interval bisa diubah, minimum 30 detik.
-- Teks bisa diubah tanpa deploy ulang.
-- `/on`, `/off`, `/status`, `/sendnow`.
-- Konfigurasi tersimpan di `data/state.json`.
+- Pesan `/start` memakai sapaan iLinkin Store.
+- Hasil relay mempertahankan formatting Telegram dari bot tujuan (bold/code/link) jika memungkinkan.
+- Footer Grup dan Bot Auto Order ditambahkan otomatis bila belum ada di balasan target.
+- Inline URL button dari bot tujuan tetap diteruskan.
 
-## Setup
 
-1. Buat API credentials di `my.telegram.org`.
-2. Buat bot kontrol dengan BotFather.
-3. Salin `.env.example` menjadi `.env`.
-4. Isi `API_ID`, `API_HASH`, `CONTROL_BOT_TOKEN`, dan `ADMIN_USER_ID`.
-5. Jalankan:
+## Alur
 
-```bash
-npm install
-npm start
-```
+1. Anda mengirim teks ke Telegram Bot milik Anda.
+2. Webhook Vercel menyimpan job ke Supabase.
+3. Worker Vercel login ke akun Telegram biasa melalui MTProto (`TELEGRAM_USER_SESSION`).
+4. Userbot mengirim **teks yang sama** ke bot tujuan (`TARGET_BOT_USERNAME`).
+5. Worker menunggu balasan bot tujuan.
+6. Teks balasan dikirim kembali ke chat Telegram Bot Anda.
+7. Tombol URL pada balasan bot tujuan ikut dibuat ulang sebagai inline button pada bot Anda.
 
-Pada login pertama, terminal akan meminta nomor, kode Telegram, dan password 2FA bila aktif. Setelah berhasil, program mencetak `SESSION_STRING`. Simpan nilai tersebut ke `.env` supaya restart berikutnya tidak meminta kode lagi.
+Job diproses **serial** agar balasan dari bot tujuan tidak tertukar antara dua request.
 
-## Perintah control bot
+## 1. Supabase
 
-```text
-/start
-/settarget @nama_channel
-/setinterval 30
-/settext Promo hari ini tersedia!
-/on
-/off
-/status
-/sendnow
-```
+Jalankan seluruh isi `supabase.sql` di **Supabase → SQL Editor**.
 
-Contoh target:
+Jika tabel project v4 sudah ada, SQL ini tetap kompatibel dan dapat dijalankan ulang.
+
+## 2. Telegram API ID / Hash
+
+Buka `https://my.telegram.org` menggunakan akun Telegram biasa yang akan dijadikan userbot, lalu buat API credentials.
+
+Set di Vercel:
 
 ```text
-/settarget @nama_channel
-/settarget -1001234567890
-/settarget @username_bot_tujuan
+TELEGRAM_API_ID=...
+TELEGRAM_API_HASH=...
 ```
 
-Akun Telegram yang terhubung harus bisa mengakses chat target. Untuk channel, akun tersebut harus punya hak yang diperlukan untuk mengirim. Untuk chat dengan bot lain, akun pengguna dapat mengirim pesan ke bot yang tersedia.
+## 3. Environment Variables Vercel
 
-## Deployment
+```text
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=
+WEBHOOK_SETUP_KEY=
+BASE_URL=https://domain-anda.vercel.app
+OWNER_TELEGRAM_ID=123456789
 
-Ini adalah proses yang harus **selalu hidup**, karena interval berjalan dengan timer Node.js. Gunakan VPS atau worker/service yang persistent (mis. Railway/Render worker/VPS). Jangan mengandalkan Vercel Functions untuk timer 30 detik.
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
 
-## Keamanan
+TELEGRAM_API_ID=
+TELEGRAM_API_HASH=
+TELEGRAM_USER_SESSION=
 
-`SESSION_STRING` memberi akses ke sesi akun Telegram. Jangan commit `.env`, jangan membagikannya, dan simpan sebagai secret environment variable.
+TARGET_BOT_USERNAME=NamaBotTujuan
+BRIDGE_WORKER_SECRET=
 
-Gunakan auto-sender hanya pada grup/channel/chat yang mengizinkan pengiriman otomatis agar tidak dianggap spam oleh Telegram.
+RELAY_TIMEOUT_MS=120000
+RELAY_POLL_MS=1200
+RELAY_SETTLE_MS=2200
+MAX_RELAY_TEXT_CHARS=4000
+```
+
+`TARGET_BOT_USERNAME` dapat ditulis `NamaBotTujuan` atau `@NamaBotTujuan`.
+
+`OWNER_TELEGRAM_ID` opsional tetapi disarankan. Jika diisi, hanya Telegram user ID tersebut yang dapat memakai bot relay.
+
+`BASE_URL` adalah URL root deployment production Vercel, misalnya `https://nama-project.vercel.app`. Variable ini sengaja tidak memakai prefix `PUBLIC_`, sehingga dapat disimpan sebagai environment variable Sensitive/Secret jika kebijakan Vercel Anda mewajibkannya. Jangan tambahkan `/api` atau path lain.
+
+
+## 4. Membuat TELEGRAM_USER_SESSION
+
+Setelah deploy dan API ID/Hash sudah tersedia, buka:
+
+```text
+https://DOMAIN/setup-userbot.html
+```
+
+Masukkan `WEBHOOK_SETUP_KEY`, nomor Telegram userbot, kode login Telegram, dan password 2FA jika diminta.
+
+Setelah berhasil, copy `sessionString` ke Vercel sebagai:
+
+```text
+TELEGRAM_USER_SESSION=...
+```
+
+Lalu Redeploy.
+
+Session string adalah kredensial login penuh akun Telegram tersebut. Simpan sebagai secret dan jangan commit ke repository.
+
+## 5. Setup webhook
+
+Buka:
+
+```text
+https://DOMAIN/api/setup-webhook?key=WEBHOOK_SETUP_KEY_ANDA
+```
+
+Cek health:
+
+```text
+https://DOMAIN/api/health
+```
+
+Tes userbot + resolve bot tujuan:
+
+```text
+https://DOMAIN/api/userbot-test?key=WEBHOOK_SETUP_KEY_ANDA
+```
+
+Tes percakapan `/start` ke bot tujuan:
+
+```text
+https://DOMAIN/api/target-test?key=WEBHOOK_SETUP_KEY_ANDA
+```
+
+## 6. Penggunaan
+
+Kirim pesan teks biasa ke bot Anda. Contoh:
+
+```text
+ABC-123-XYZ
+```
+
+Bot Anda akan menampilkan progress, userbot meneruskan `ABC-123-XYZ` ke bot tujuan, kemudian progress tersebut diubah menjadi balasan dari bot tujuan.
+
+Jika balasan bot tujuan memiliki URL button, button tersebut ikut tampil pada bot Anda.
+
+Untuk debug satu request:
+
+```text
+/debug ABC-123-XYZ
+```
+
+Debug menambahkan target, Job ID, jumlah message, dan ID message terakhir.
+
+## Catatan Vercel
+
+Project ini menggunakan pola **connect → kirim → poll balasan → disconnect** pada setiap job. Ini cocok untuk Vercel tanpa worker VPS persisten, selama bot tujuan membalas sebelum batas `RELAY_TIMEOUT_MS` dan batas durasi function Vercel.

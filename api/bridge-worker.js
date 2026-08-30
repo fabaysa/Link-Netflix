@@ -19,7 +19,6 @@ import {
   sendPlainMessage
 } from "../lib/telegram-bot.js";
 import { kickBridgeWorker } from "../lib/kick-worker.js";
-import { sanitizeTargetText } from "../lib/safe-relay.js";
 
 function esc(value = "") {
   return String(value)
@@ -55,26 +54,16 @@ function mergeButtons(messages) {
 }
 
 function brandingFooterHtml() {
-  return [
-    "━━━━━━━━━━━━━━━━━━",
-    '📢 <b>Grup:</b> <a href="https://t.me/ilinkinstore">https://t.me/ilinkinstore</a>',
-    '🤖 <b>Bot Auto Order:</b> <a href="https://t.me/iLinkinBot">@iLinkinBot</a>',
-    "💬 Berminat produk kami? Silakan hubungi melalui bot di atas."
-  ].join("\n");
+  return "";
 }
 
 function brandingFooterPlain() {
-  return [
-    "━━━━━━━━━━━━━━━━━━",
-    "📢 Grup : https://t.me/ilinkinstore",
-    "🤖 Bot Auto Order: @iLinkinBot",
-    "💬 Berminat produk kami? Silakan hubungi melalui bot di atas."
-  ].join("\n");
+  return "";
 }
 
 function alreadyHasBranding(text) {
-  const value = String(text || "").toLowerCase();
-  return value.includes("t.me/ilinkinstore") || value.includes("@ilinkinbot");
+  // Branding dihilangkan — selalu return true agar footer tidak ditambahkan.
+  return true;
 }
 
 function buildReplyText(result) {
@@ -211,16 +200,10 @@ async function processOneJob(job) {
     const sent = await sendRelayText(client, job.input_payload);
     const result = await waitForTargetReply(client, sent.sentMessageId);
 
-    const safeMessages = (result.messages || []).map(item => ({
-      ...item,
-      text: sanitizeTargetText(item.text),
-      html: sanitizeTargetText(item.text)
-    }));
-
     const storedResult = {
-      bridge: "5.5-safe-demo-relay-vercel",
+      bridge: "5.2-branded-relay-vercel",
       target: `@${targetUsername()}`,
-      messages: safeMessages,
+      messages: result.messages,
       received_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
     };
@@ -230,7 +213,7 @@ async function processOneJob(job) {
       target_result_message_id: result.resultMessageId
     });
 
-    await sendResultToUser(job, { ...result, messages: safeMessages });
+    await sendResultToUser(job, result);
 
     return {
       ok: true,
