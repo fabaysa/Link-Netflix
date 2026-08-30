@@ -200,7 +200,7 @@ async function handleSetupWebhook(req, res) {
     const result = await botApi("setWebhook", {
       url: webhook,
       secret_token: secret,
-      allowed_updates: ["message"],
+      allowed_updates: ["message", "callback_query"],
       drop_pending_updates: false
     });
 
