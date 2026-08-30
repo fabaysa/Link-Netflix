@@ -66,6 +66,43 @@ function alreadyHasBranding(text) {
   // Branding dihilangkan — selalu return true agar footer tidak ditambahkan.
   return true;
 }
+function transformReplyText(text) {
+  let out = text;
+
+  // Ganti "NFT Token" → "NETFLIX Token"
+  out = out.replace(/NFT Token Berhasil Digenerate/g, "NETFLIX Token Berhasil Digenerate");
+  out = out.replace(/NFT Token Links by Device/g, "NETFLIX Token Links by Device");
+
+  // Hapus baris branding target bot
+  out = out
+    .split("\n")
+    .filter(line => {
+      const l = line.toLowerCase();
+      if (l.includes("grup skynet")) return false;
+      if (l.includes("bot auto order")) return false;
+      if (l.includes("minat produk kami")) return false;
+      if (l.includes("@skystoreautobot")) return false;
+      if (l.includes("t.me/+e1djocxf2og3nzk9")) return false;
+      return true;
+    })
+    .join("\n");
+
+  // Ganti blok peringatan lama dengan versi yang lebih rapi
+  out = out.replace(
+    /⚠️\s*Penting:.*?Pake link.*?\n[\s\S]*?generate.* lagi aja\./i,
+    [
+      "⚠️ Gunakan link sebelum masa berlaku habis!",
+      "📋 Cara pakai: Klik link atau copy-paste ke browser → otomatis login.",
+      "🔄 Ketik /start untuk generate ulang atau kembali ke menu.",
+      "💡 Link expired? Tinggal generate lagi!"
+    ].join("\n")
+  );
+
+  // Bersihkan baris kosong berlebihan
+  out = out.replace(/\n{3,}/g, "\n\n").trim();
+
+  return out;
+}
 
 function buildReplyText(result) {
   const parts = (result.messages || [])
@@ -73,9 +110,7 @@ function buildReplyText(result) {
     .filter(Boolean);
 
   let text = parts.join("\n\n") || "(Bot tujuan membalas tanpa teks.)";
-  if (!alreadyHasBranding(text)) {
-    text += `\n\n${brandingFooterPlain()}`;
-  }
+  text = transformReplyText(text);
   return text;
 }
 
@@ -85,10 +120,7 @@ function buildReplyHtml(result) {
     .filter(Boolean);
 
   let html = parts.join("\n\n") || "(Bot tujuan membalas tanpa teks.)";
-  const plain = (result.messages || []).map(item => item.text || "").join("\n");
-  if (!alreadyHasBranding(plain)) {
-    html += `\n\n${brandingFooterHtml()}`;
-  }
+  html = transformReplyText(html);
   return html;
 }
 
