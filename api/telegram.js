@@ -13,12 +13,6 @@ function esc(value = "") {
 }
 
 
-function ownerAllowed(from) {
-  const configured = String(process.env.OWNER_TELEGRAM_ID || "").trim();
-  if (!configured) return true;
-  return String(from?.id || "") === configured;
-}
-
 async function upsertUser(from) {
   if (!from?.id) return;
   const supabase = getSupabase();
@@ -40,7 +34,6 @@ async function handleMessage(message) {
   if (!chatId) return;
 
   const rawText = typeof message.text === "string" ? message.text : "";
-  const isOwner = ownerAllowed(from);
 
   if (/^\/start(?:@\w+)?$/i.test(rawText.trim())) {
     // Kirim sapaan secepat mungkin; pencatatan user tidak perlu memblokir UI.
@@ -68,22 +61,17 @@ async function handleMessage(message) {
       "📖 Klik <b>Bantuan/tutor</b> untuk melihat panduan penggunaan."
     ].join("\n"), {
       reply_markup: {
-        inline_keyboard: isOwner
-          ? [
-              [{ text: "🗝️ Generate Cookie", callback_data: "generate_cookie" }],
-              [{ text: "📖 Bantuan/tutor", callback_data: "bantuan" }]
-            ]
-          : [
-              [{ text: "📖 Bantuan/tutor", callback_data: "bantuan" }]
-            ]
+        inline_keyboard: [
+          [{ text: "🗝️ Generate Cookie", callback_data: "generate_cookie" }],
+          [{ text: "📖 Bantuan/tutor", callback_data: "bantuan" }]
+        ]
       }
     });
     return;
   }
 
   if (/^\/help(?:@\w+)?$/i.test(rawText.trim())) {
-    const helpLines = isOwner
-      ? [
+    const helpLines = [
           "📖 <b>Cara Menggunakan Bot:</b>",
           "",
           "1️⃣ Klik tombol <b>🗝️ Generate Cookie</b>",
@@ -93,15 +81,6 @@ async function handleMessage(message) {
           "",
           "⚠️ Pastikan cookies masih aktif/valid",
           "💡 Kalo link udah expired, generate lagi aja",
-          "",
-          "Ketik /start untuk kembali ke menu utama"
-        ]
-      : [
-          "📖 <b>Bantuan</b>",
-          "",
-          "Bot ini dapat dibuka dan menggunakan menu umum oleh siapa saja.",
-          "",
-          "🔒 Fitur pemrosesan cookies/token hanya tersedia untuk akun yang diizinkan.",
           "",
           "Ketik /start untuk kembali ke menu utama"
         ];
@@ -117,13 +96,6 @@ async function handleMessage(message) {
     return;
   }
 
-  if (!isOwner) {
-    await sendMessage(
-      chatId,
-      "🔒 Fitur pemrosesan cookies/token hanya tersedia untuk akun yang diizinkan.\n\nKetik /start untuk membuka menu umum."
-    );
-    return;
-  }
 
   if (!rawText) {
     await sendMessage(chatId, "❌ Saat ini relay menerima pesan teks.");
@@ -188,16 +160,7 @@ async function handleCallbackQuery(callbackQuery) {
     }).catch(() => {})
   );
 
-  const isOwner = ownerAllowed(from);
-
   if (data === "generate_cookie") {
-    if (!isOwner) {
-      await sendMessage(
-        chatId,
-        "🔒 Fitur pemrosesan cookies/token hanya tersedia untuk akun yang diizinkan."
-      );
-      return;
-    }
     await sendMessage(chatId, [
       "📤 <b>Kirim cookies Netflix kamu sekarang.</b>",
       "",
@@ -212,8 +175,7 @@ async function handleCallbackQuery(callbackQuery) {
   }
 
   if (data === "bantuan") {
-    const helpLines = isOwner
-      ? [
+    const helpLines = [
           "📖 <b>Cara Menggunakan Bot:</b>",
           "",
           "1️⃣ Klik tombol <b>🗝️ Generate Cookie</b>",
@@ -223,15 +185,6 @@ async function handleCallbackQuery(callbackQuery) {
           "",
           "⚠️ Pastikan cookies masih aktif/valid",
           "💡 Kalo link udah expired, generate lagi aja",
-          "",
-          "Ketik /start untuk kembali ke menu utama"
-        ]
-      : [
-          "📖 <b>Bantuan</b>",
-          "",
-          "Bot ini dapat dibuka dan menggunakan menu umum oleh siapa saja.",
-          "",
-          "🔒 Fitur pemrosesan cookies/token hanya tersedia untuk akun yang diizinkan.",
           "",
           "Ketik /start untuk kembali ke menu utama"
         ];
