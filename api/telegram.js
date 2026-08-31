@@ -40,11 +40,7 @@ async function handleMessage(message) {
   if (!chatId) return;
 
   const rawText = typeof message.text === "string" ? message.text : "";
-
-  if (!ownerAllowed(from)) {
-    await sendMessage(chatId, "⛔ Bot ini bersifat private.");
-    return;
-  }
+  const isOwner = ownerAllowed(from);
 
   if (/^\/start(?:@\w+)?$/i.test(rawText.trim())) {
     // Kirim sapaan secepat mungkin; pencatatan user tidak perlu memblokir UI.
@@ -72,29 +68,44 @@ async function handleMessage(message) {
       "📖 Klik <b>Bantuan/tutor</b> untuk melihat panduan penggunaan."
     ].join("\n"), {
       reply_markup: {
-        inline_keyboard: [
-          [{ text: "🗝️ Generate Cookie", callback_data: "generate_cookie" }],
-          [{ text: "📖 Bantuan/tutor", callback_data: "bantuan" }]
-        ]
+        inline_keyboard: isOwner
+          ? [
+              [{ text: "🗝️ Generate Cookie", callback_data: "generate_cookie" }],
+              [{ text: "📖 Bantuan/tutor", callback_data: "bantuan" }]
+            ]
+          : [
+              [{ text: "📖 Bantuan/tutor", callback_data: "bantuan" }]
+            ]
       }
     });
     return;
   }
 
   if (/^\/help(?:@\w+)?$/i.test(rawText.trim())) {
-    await sendMessage(chatId, [
-      "📖 <b>Cara Menggunakan Bot:</b>",
-      "",
-      "1️⃣ Klik tombol <b>🗝️ Generate Cookie</b>",
-      "2️⃣ Kirim/paste cookies Netflix kamu",
-      "3️⃣ Tunggu bot memproses dan generate link",
-      "4️⃣ Kamu akan mendapat link login untuk PC, HP, dan TV",
-      "",
-      "⚠️ Pastikan cookies masih aktif/valid",
-      "💡 Kalo link udah expired, generate lagi aja",
-      "",
-      "Ketik /start untuk kembali ke menu utama"
-    ].join("\n"));
+    const helpLines = isOwner
+      ? [
+          "📖 <b>Cara Menggunakan Bot:</b>",
+          "",
+          "1️⃣ Klik tombol <b>🗝️ Generate Cookie</b>",
+          "2️⃣ Kirim/paste cookies Netflix kamu",
+          "3️⃣ Tunggu bot memproses dan generate link",
+          "4️⃣ Kamu akan mendapat link login untuk PC, HP, dan TV",
+          "",
+          "⚠️ Pastikan cookies masih aktif/valid",
+          "💡 Kalo link udah expired, generate lagi aja",
+          "",
+          "Ketik /start untuk kembali ke menu utama"
+        ]
+      : [
+          "📖 <b>Bantuan</b>",
+          "",
+          "Bot ini dapat dibuka dan menggunakan menu umum oleh siapa saja.",
+          "",
+          "🔒 Fitur pemrosesan cookies/token hanya tersedia untuk akun yang diizinkan.",
+          "",
+          "Ketik /start untuk kembali ke menu utama"
+        ];
+    await sendMessage(chatId, helpLines.join("\n"));
     return;
   }
 
@@ -102,6 +113,14 @@ async function handleMessage(message) {
     await sendMessage(
       chatId,
       "⚙️ Engine aktif: <code>5.2-branded-relay-vercel</code>"
+    );
+    return;
+  }
+
+  if (!isOwner) {
+    await sendMessage(
+      chatId,
+      "🔒 Fitur pemrosesan cookies/token hanya tersedia untuk akun yang diizinkan.\n\nKetik /start untuk membuka menu umum."
     );
     return;
   }
@@ -169,12 +188,16 @@ async function handleCallbackQuery(callbackQuery) {
     }).catch(() => {})
   );
 
-  if (!ownerAllowed(from)) {
-    await sendMessage(chatId, "⛔ Bot ini bersifat private.");
-    return;
-  }
+  const isOwner = ownerAllowed(from);
 
   if (data === "generate_cookie") {
+    if (!isOwner) {
+      await sendMessage(
+        chatId,
+        "🔒 Fitur pemrosesan cookies/token hanya tersedia untuk akun yang diizinkan."
+      );
+      return;
+    }
     await sendMessage(chatId, [
       "📤 <b>Kirim cookies Netflix kamu sekarang.</b>",
       "",
@@ -189,19 +212,30 @@ async function handleCallbackQuery(callbackQuery) {
   }
 
   if (data === "bantuan") {
-    await sendMessage(chatId, [
-      "📖 <b>Cara Menggunakan Bot:</b>",
-      "",
-      "1️⃣ Klik tombol <b>🗝️ Generate Cookie</b>",
-      "2️⃣ Kirim/paste cookies Netflix kamu",
-      "3️⃣ Tunggu bot memproses dan generate link",
-      "4️⃣ Kamu akan mendapat link login untuk PC, HP, dan TV",
-      "",
-      "⚠️ Pastikan cookies masih aktif/valid",
-      "💡 Kalo link udah expired, generate lagi aja",
-      "",
-      "Ketik /start untuk kembali ke menu utama"
-    ].join("\n"));
+    const helpLines = isOwner
+      ? [
+          "📖 <b>Cara Menggunakan Bot:</b>",
+          "",
+          "1️⃣ Klik tombol <b>🗝️ Generate Cookie</b>",
+          "2️⃣ Kirim/paste cookies Netflix kamu",
+          "3️⃣ Tunggu bot memproses dan generate link",
+          "4️⃣ Kamu akan mendapat link login untuk PC, HP, dan TV",
+          "",
+          "⚠️ Pastikan cookies masih aktif/valid",
+          "💡 Kalo link udah expired, generate lagi aja",
+          "",
+          "Ketik /start untuk kembali ke menu utama"
+        ]
+      : [
+          "📖 <b>Bantuan</b>",
+          "",
+          "Bot ini dapat dibuka dan menggunakan menu umum oleh siapa saja.",
+          "",
+          "🔒 Fitur pemrosesan cookies/token hanya tersedia untuk akun yang diizinkan.",
+          "",
+          "Ketik /start untuk kembali ke menu utama"
+        ];
+    await sendMessage(chatId, helpLines.join("\n"));
     return;
   }
 }
