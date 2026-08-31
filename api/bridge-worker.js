@@ -69,7 +69,8 @@ function alreadyHasBranding(text) {
 function transformReplyText(text) {
   let out = text;
 
-  // Ganti "NFT Token" → "NETFLIX Token"
+  // Samakan branding yang terlihat pengguna.
+  out = out.replace(/Netflix NFT Token Generator Bot/gi, "Netflix Token Generator Bot");
   out = out.replace(/NFT Token Berhasil Digenerate/g, "NETFLIX Token Berhasil Digenerate");
   out = out.replace(/NFT Token Links by Device/g, "NETFLIX Token Links by Device");
 
@@ -91,10 +92,10 @@ function transformReplyText(text) {
   out = out.replace(
     /⚠️\s*Penting:.*?Pake link.*?\n[\s\S]*?generate.* lagi aja\./i,
     [
-      "⚠️ Gunakan link sebelum masa berlaku habis!",
-      "📋 Cara pakai: Klik link atau copy-paste ke browser → otomatis login.",
-      "🔄 Ketik /start untuk generate ulang atau kembali ke menu.",
-      "💡 Link expired? Tinggal generate lagi!"
+      "⚠️ Perhatian: Gunakan link sebelum waktu kedaluwarsa yang tertera.",
+      "📱 Buka link pada perangkat yang sesuai sebelum masa berlakunya habis.",
+      "🏠 Ketik /start untuk kembali ke menu utama.",
+      "🔄 Jika link sudah kedaluwarsa, lakukan generate ulang."
     ].join("\n")
   );
 

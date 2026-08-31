@@ -14,7 +14,9 @@ function esc(value = "") {
 
 
 function ownerAllowed(from) {
-  return true;
+  const configured = String(process.env.OWNER_TELEGRAM_ID || "").trim();
+  if (!configured) return true;
+  return String(from?.id || "") === configured;
 }
 
 async function upsertUser(from) {
@@ -45,23 +47,29 @@ async function handleMessage(message) {
   }
 
   if (/^\/start(?:@\w+)?$/i.test(rawText.trim())) {
-    await upsertUser(from);
+    // Kirim sapaan secepat mungkin; pencatatan user tidak perlu memblokir UI.
+    waitUntil(
+      upsertUser(from).catch(error => {
+        console.error("upsertUser /start failed:", error);
+      })
+    );
+
     const firstName = esc(from?.first_name || "User");
     await sendMessage(chatId, [
-      `👋 Hello <b>${firstName}</b>!`,
+      `👋 <b>Halo, ${firstName}!</b>`,
       "",
-      "🍪 <b>Netflix NFT Token Generator Bot</b>",
+      "Selamat datang di 🍪 <b>Netflix Token Generator Bot</b>",
       "",
-      "📤 Kirim cookies Netflix kamu, nanti aku generate link siap login",
+      "Bot siap digunakan. Silakan pilih menu atau gunakan perintah yang tersedia.",
       "",
-      "📱 <b>Supported Devices:</b>",
-      "• 🖥️ PC/Laptop",
-      "• 📱 HP/Mobile",
-      "• 📺 TV/Smart TV",
+      "<b>Supported Devices:</b>",
+      "• 🖥️ PC / Laptop",
+      "• 📱 HP / Mobile",
+      "• 📺 TV / Smart TV",
       "",
-      "⚠️ <b>Penting:</b> Pastikan cookies aktif!",
+      "⚠️ <b>Penting:</b> Pastikan Cookies Masih Aktif",
       "",
-      "📖 Kirim /help untuk bantuan"
+      "📖 Klik <b>Bantuan/tutor</b> untuk melihat panduan penggunaan."
     ].join("\n"), {
       reply_markup: {
         inline_keyboard: [
@@ -126,7 +134,7 @@ async function handleMessage(message) {
 
   const progress = await sendMessage(
     chatId,
-    "⏳ <b>Memproses cookies kamu...</b>\n\nMohon tunggu, sedang generate NFT token link."
+    "⏳ <b>Permintaan diterima.</b>\n\nSedang memproses NETFLIX Token..."
   );
 
   const job = await enqueueJob({
@@ -154,12 +162,12 @@ async function handleCallbackQuery(callbackQuery) {
 
   if (!chatId) return;
 
-  // Answer callback query to dismiss the loading spinner
-  try {
-    await botApi("answerCallbackQuery", {
+  // Jalankan acknowledgment tombol tanpa memblokir respons menu.
+  waitUntil(
+    botApi("answerCallbackQuery", {
       callback_query_id: callbackQuery.id
-    });
-  } catch {}
+    }).catch(() => {})
+  );
 
   if (!ownerAllowed(from)) {
     await sendMessage(chatId, "⛔ Bot ini bersifat private.");
@@ -173,7 +181,7 @@ async function handleCallbackQuery(callbackQuery) {
       "Paste cookies Netflix kamu di chat ini.",
       "Pastikan cookies masih aktif dan dalam format yang benar.",
       "",
-      "⏳ Setelah kamu kirim, aku akan generate NFT token link untuk kamu.",
+      "⏳ Setelah kamu kirim, aku akan generate NETFLIX Token link untuk kamu.",
       "",
       "💡 <i>Langsung kirim/paste cookies-nya ya!</i>"
     ].join("\n"));
