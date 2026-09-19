@@ -61,7 +61,7 @@
             </div>
             <div class="mock-side">
               <div class="stat"><span>STATUS</span><strong>Ready</strong></div>
-              <div class="stat"><span>ENGINE</span><strong>5.3</strong></div>
+              <div class="stat"><span>ENGINE</span><strong>5.4</strong></div>
               <div class="mock-device">PC</div>
               <div class="mock-device">PHONE</div>
               <div class="mock-device">TV</div>
@@ -77,7 +77,7 @@
           <span class="section-kicker">WEB ACCESS</span>
           <h2>Proses langsung di browser</h2>
         </div>
-        <p>Versi web memakai queue backend yang sama dengan layanan Telegram. Mode web dibatasi untuk input demo non-sensitif.</p>
+        <p>Versi web memakai Supabase dan worker Vercel dengan status real-time. Mode browser dibatasi untuk input demo non-sensitif dan tidak menerima kredensial akun.</p>
       </div>
 
       <div class="workspace-grid">
@@ -159,7 +159,7 @@
         <span class="feature-index">03</span>
         <div>
           <h3>Protected flow</h3>
-          <p>Request web memiliki access token terpisah dan hasil sensitif disaring sebelum ditampilkan di browser.</p>
+          <p>Request web memiliki access token terpisah, worker dapat memulihkan job yang tertahan, dan hasil sensitif disaring sebelum ditampilkan di browser.</p>
         </div>
       </article>
     </section>
@@ -177,7 +177,7 @@
   <footer class="footer shell">
     <div class="brand footer-brand"><span class="brand-mark">LN</span><span><strong>Link Netflix</strong><small>Web Access</small></span></div>
     <p>Gunakan hanya untuk data dan akun yang memang kamu berhak akses.</p>
-    <span>Web engine 5.3</span>
+    <span>Web engine 5.4</span>
   </footer>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

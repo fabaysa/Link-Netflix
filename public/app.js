@@ -20,12 +20,21 @@ const timelineDone = $("timelineDone");
 
 let activePoll = null;
 let toastTimer = null;
+let pollStartedAt = 0;
+let pollFailures = 0;
+let systemReady = null;
+let healthMessage = "";
 
 function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
+}
+
+function buttonLabel(text) {
+  const label = submitBtn?.querySelector("span");
+  if (label) label.textContent = text;
 }
 
 function setBadge(status) {
@@ -42,7 +51,9 @@ function setBadge(status) {
 }
 
 function setTimeline(status) {
-  [timelineQueued, timelineProcessing, timelineDone].forEach(el => el.classList.remove("active", "done"));
+  [timelineQueued, timelineProcessing, timelineDone].forEach(el => {
+    el.classList.remove("active", "done");
+  });
 
   if (status === "queued") {
     timelineQueued.classList.add("active");
@@ -67,7 +78,11 @@ function renderResult(data) {
 
   if (data.status === "completed") {
     const messages = Array.isArray(data.result?.messages) ? data.result.messages : [];
-    const text = messages.map(item => item?.text || "").filter(Boolean).join("\n\n") || "Request selesai tanpa output teks.";
+    const text = messages
+      .map(item => item?.text || "")
+      .filter(Boolean)
+      .join("\n\n") || "Request selesai tanpa output teks.";
+
     outputText.textContent = text;
     outputBox.classList.remove("hidden");
     errorBox.classList.add("hidden");
@@ -83,38 +98,71 @@ function renderResult(data) {
 
 async function readJson(res) {
   const text = await res.text();
-  try { return JSON.parse(text); } catch { return { ok: false, error: text || `HTTP ${res.status}` }; }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { ok: false, error: text || `HTTP ${res.status}` };
+  }
 }
 
 function looksSensitive(text) {
   return /(?:cookie(?:s)?\s*[:=]|password\s*[:=]|session(?:id|_id)?\s*[:=]|(?:access|refresh|auth)_token\s*[:=]|nftoken\s*=)/i.test(text);
 }
 
+function finishPolling() {
+  clearTimeout(activePoll);
+  activePoll = null;
+  localStorage.removeItem("linknetflix.webJob");
+  submitBtn.disabled = false;
+  buttonLabel("Proses Request");
+}
+
+function failPolling(message) {
+  setBadge("failed");
+  setTimeline("failed");
+  errorBox.textContent = message;
+  errorBox.classList.remove("hidden");
+  outputBox.classList.add("hidden");
+  resultEmpty.classList.add("hidden");
+  resultLive.classList.remove("hidden");
+  finishPolling();
+}
+
 async function pollJob(id, accessToken) {
   clearTimeout(activePoll);
+
+  if (!pollStartedAt) pollStartedAt = Date.now();
+  if (Date.now() - pollStartedAt > 7 * 60 * 1000) {
+    failPolling("Request melewati batas waktu. Cek Vercel Function Logs dan jalankan ulang supabase.sql jika status terus berhenti di antrean.");
+    return;
+  }
+
   try {
-    const res = await fetch(`/api/web?id=${encodeURIComponent(id)}&token=${encodeURIComponent(accessToken)}`, { cache: "no-store" });
+    const res = await fetch(`/api/web?id=${encodeURIComponent(id)}&token=${encodeURIComponent(accessToken)}`, {
+      cache: "no-store"
+    });
     const data = await readJson(res);
     if (!res.ok || !data.ok) throw new Error(data.error || "Gagal membaca status request.");
 
+    pollFailures = 0;
     renderResult(data);
 
     if (data.status === "completed" || data.status === "failed") {
-      localStorage.removeItem("linknetflix.webJob");
-      submitBtn.disabled = false;
-      submitBtn.querySelector("span").textContent = "Proses Request";
+      finishPolling();
       return;
     }
 
     activePoll = setTimeout(() => pollJob(id, accessToken), 1500);
   } catch (error) {
-    setBadge("failed");
-    errorBox.textContent = error.message || String(error);
-    errorBox.classList.remove("hidden");
-    resultEmpty.classList.add("hidden");
-    resultLive.classList.remove("hidden");
-    submitBtn.disabled = false;
-    submitBtn.querySelector("span").textContent = "Coba Lagi";
+    pollFailures += 1;
+
+    // Jangan langsung mematikan request karena satu network hiccup/edge cold start.
+    if (pollFailures <= 4) {
+      activePoll = setTimeout(() => pollJob(id, accessToken), 1500 * pollFailures);
+      return;
+    }
+
+    failPolling(error.message || String(error));
   }
 }
 
@@ -139,14 +187,22 @@ submitBtn.addEventListener("click", async () => {
     return;
   }
 
+  if (systemReady === false) {
+    showToast(healthMessage || "Backend belum siap. Periksa konfigurasi Vercel dan Supabase.");
+    return;
+  }
+
   submitBtn.disabled = true;
-  submitBtn.querySelector("span").textContent = "Mengirim...";
+  buttonLabel("Mengirim...");
   resultEmpty.classList.add("hidden");
   resultLive.classList.remove("hidden");
   outputBox.classList.add("hidden");
   errorBox.classList.add("hidden");
   setBadge("queued");
   setTimeline("queued");
+
+  pollStartedAt = Date.now();
+  pollFailures = 0;
 
   try {
     const res = await fetch("/api/web", {
@@ -157,16 +213,15 @@ submitBtn.addEventListener("click", async () => {
     const data = await readJson(res);
     if (!res.ok || !data.ok) throw new Error(data.error || "Request tidak dapat dikirim.");
 
-    localStorage.setItem("linknetflix.webJob", JSON.stringify({ id: data.id, accessToken: data.accessToken }));
-    submitBtn.querySelector("span").textContent = "Memproses...";
+    localStorage.setItem("linknetflix.webJob", JSON.stringify({
+      id: data.id,
+      accessToken: data.accessToken,
+      startedAt: pollStartedAt
+    }));
+    buttonLabel("Memproses...");
     pollJob(data.id, data.accessToken);
   } catch (error) {
-    setBadge("failed");
-    setTimeline("failed");
-    errorBox.textContent = error.message || String(error);
-    errorBox.classList.remove("hidden");
-    submitBtn.disabled = false;
-    submitBtn.querySelector("span").textContent = "Coba Lagi";
+    failPolling(error.message || String(error));
   }
 });
 
@@ -184,31 +239,55 @@ copyBtn.addEventListener("click", async () => {
 });
 
 async function checkHealth() {
+  systemPill.classList.remove("online", "offline");
+  systemText.textContent = "Checking";
+
   try {
-    const res = await fetch("/api/health", { cache: "no-store" });
+    const res = await fetch("/api/web?health=1", { cache: "no-store" });
     const data = await readJson(res);
-    if (!res.ok || !data.ok) throw new Error();
-    systemPill.classList.add("online");
-    systemPill.classList.remove("offline");
-    systemText.textContent = "System online";
-  } catch {
-    systemPill.classList.remove("online");
+    if (!res.ok || !data.ok) throw new Error(data.error || "Health check gagal.");
+
+    systemReady = Boolean(data.ready);
+    healthMessage = data.message || "";
+    systemPill.title = healthMessage;
+
+    if (systemReady) {
+      systemPill.classList.add("online");
+      systemText.textContent = "System ready";
+    } else {
+      systemPill.classList.add("offline");
+      systemText.textContent = "Setup required";
+    }
+  } catch (error) {
+    systemReady = false;
+    healthMessage = error.message || "Backend tidak dapat diakses.";
     systemPill.classList.add("offline");
     systemText.textContent = "System offline";
+    systemPill.title = healthMessage;
   }
 }
 
 function resumeJob() {
   try {
     const saved = JSON.parse(localStorage.getItem("linknetflix.webJob") || "null");
-    if (saved?.id && saved?.accessToken) {
-      submitBtn.disabled = true;
-      submitBtn.querySelector("span").textContent = "Memproses...";
-      resultEmpty.classList.add("hidden");
-      resultLive.classList.remove("hidden");
-      pollJob(saved.id, saved.accessToken);
+    if (!saved?.id || !saved?.accessToken) return;
+
+    const startedAt = Number(saved.startedAt || Date.now());
+    if (Date.now() - startedAt > 60 * 60 * 1000) {
+      localStorage.removeItem("linknetflix.webJob");
+      return;
     }
-  } catch {}
+
+    pollStartedAt = startedAt;
+    pollFailures = 0;
+    submitBtn.disabled = true;
+    buttonLabel("Memproses...");
+    resultEmpty.classList.add("hidden");
+    resultLive.classList.remove("hidden");
+    pollJob(saved.id, saved.accessToken);
+  } catch {
+    localStorage.removeItem("linknetflix.webJob");
+  }
 }
 
 payload.value = "DEMO: Test Web Access";

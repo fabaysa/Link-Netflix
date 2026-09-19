@@ -131,6 +131,59 @@ begin
 end;
 $$;
 
+
+-- Web Access v5.4 claims one specific browser job without calling the Vercel
+-- deployment through BASE_URL. It shares the same advisory lock as the Telegram
+-- worker so the MTProto account is never used by two jobs at once.
+create or replace function public.claim_gemini_checker_web_job(
+  p_job_id uuid,
+  p_worker_id text
+)
+returns setof public.gemini_checker_jobs
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform pg_advisory_xact_lock(40420260820);
+
+  -- Recover stale jobs before deciding whether the shared Telegram account is busy.
+  update public.gemini_checker_jobs
+     set status = case when attempts >= 3 then 'failed' else 'queued' end,
+         worker_id = null,
+         locked_at = null,
+         last_error = case
+           when attempts >= 3 then coalesce(last_error, '') || ' | stale worker exceeded retry limit'
+           else coalesce(last_error, '') || ' | stale worker requeued'
+         end,
+         completed_at = case when attempts >= 3 then now() else null end,
+         updated_at = now()
+   where status = 'processing'
+     and locked_at < now() - interval '5 minutes';
+
+  if exists (
+    select 1
+      from public.gemini_checker_jobs
+     where status = 'processing'
+       and id <> p_job_id
+  ) then
+    return;
+  end if;
+
+  return query
+  update public.gemini_checker_jobs
+     set status = 'processing',
+         attempts = attempts + 1,
+         worker_id = p_worker_id,
+         locked_at = now(),
+         updated_at = now()
+   where id = p_job_id
+     and request_source = 'web'
+     and status = 'queued'
+   returning *;
+end;
+$$;
+
 alter table public.gemini_checker_users enable row level security;
 alter table public.gemini_checker_jobs enable row level security;
 alter table public.gemini_checker_login_sessions enable row level security;
@@ -144,5 +197,8 @@ grant select, insert, update, delete
 
 revoke all on function public.claim_gemini_checker_job(text) from public;
 grant execute on function public.claim_gemini_checker_job(text) to service_role;
+
+revoke all on function public.claim_gemini_checker_web_job(uuid, text) from public;
+grant execute on function public.claim_gemini_checker_web_job(uuid, text) to service_role;
 
 NOTIFY pgrst, 'reload schema';

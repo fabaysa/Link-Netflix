@@ -1,179 +1,166 @@
-# Telegram Userbot Relay v5.2 — Vercel + Supabase
+# Link Netflix Web v5.4 — Vercel + Supabase
 
-Versi 5.2 melanjutkan project relay generik dan menambahkan branding/formatting. Versi awal 5.0 mengubah project lama dari checker khusus menjadi **relay teks generik**.
+Versi 5.4 memperbaiki alur Web Access agar tidak berhenti di status **Queued** ketika `BASE_URL` salah, deployment Vercel memakai preview URL, atau self-fetch worker gagal.
 
-## Branding v5.2
+## Perbaikan utama v5.4
 
-- Pesan `/start` memakai sapaan iLinkin Store.
-- Hasil relay mempertahankan formatting Telegram dari bot tujuan (bold/code/link) jika memungkinkan.
-- Footer Grup dan Bot Auto Order ditambahkan otomatis bila belum ada di balasan target.
-- Inline URL button dari bot tujuan tetap diteruskan.
+- Web Access tidak lagi bergantung pada HTTP self-call melalui `BASE_URL` untuk memulai worker browser.
+- `api/web.js` memproses job browser melalui direct background worker.
+- Polling browser dapat mencoba kembali job yang masih `queued`.
+- Health check baru: `GET /api/web?health=1`.
+- Health check memvalidasi environment penting, tabel/kolom Supabase, dan RPC `claim_gemini_checker_web_job`.
+- Pesan error setup lebih jelas di website.
+- Polling tidak langsung gagal hanya karena satu network hiccup/cold start.
+- Request lama di `localStorage` dibersihkan otomatis.
+- `api/web.js` diberi `maxDuration: 300`.
 
-
-## Alur
-
-1. Anda mengirim teks ke Telegram Bot milik Anda.
-2. Webhook Vercel menyimpan job ke Supabase.
-3. Worker Vercel login ke akun Telegram biasa melalui MTProto (`TELEGRAM_USER_SESSION`).
-4. Userbot mengirim **teks yang sama** ke bot tujuan (`TARGET_BOT_USERNAME`).
-5. Worker menunggu balasan bot tujuan.
-6. Teks balasan dikirim kembali ke chat Telegram Bot Anda.
-7. Tombol URL pada balasan bot tujuan ikut dibuat ulang sebagai inline button pada bot Anda.
-
-Job diproses **serial** agar balasan dari bot tujuan tidak tertukar antara dua request.
+> Mode browser tetap khusus demo non-sensitif. Jangan mengirim cookie akun, password, session ID, access token, atau kredensial login melalui Web Access.
 
 ## 1. Supabase
 
-Jalankan seluruh isi `supabase.sql` di **Supabase → SQL Editor**.
+Buka **Supabase → SQL Editor**, lalu jalankan **seluruh isi `supabase.sql`**.
 
-Jika tabel project v4 sudah ada, SQL ini tetap kompatibel dan dapat dijalankan ulang.
-
-## 2. Telegram API ID / Hash
-
-Buka `https://my.telegram.org` menggunakan akun Telegram biasa yang akan dijadikan userbot, lalu buat API credentials.
-
-Set di Vercel:
+Ini wajib dilakukan lagi saat upgrade dari v5.3 karena v5.4 menambahkan RPC:
 
 ```text
-TELEGRAM_API_ID=...
-TELEGRAM_API_HASH=...
+claim_gemini_checker_web_job(uuid, text)
 ```
 
-## 3. Environment Variables Vercel
+RPC ini membuat job browser dapat diklaim langsung oleh Web Access tanpa perlu memanggil deployment Vercel melalui `BASE_URL`.
+
+Setelah SQL berhasil, ambil:
+
+```text
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+Gunakan server-side secret/service-role key. Jangan pernah meletakkan key ini di `public/`, HTML, atau JavaScript browser.
+
+## 2. Environment Variables Vercel
+
+Gunakan `.env.example` sebagai daftar variabel.
+
+Minimal untuk Web Access:
+
+```text
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+TELEGRAM_API_ID=
+TELEGRAM_API_HASH=
+TELEGRAM_USER_SESSION=
+TARGET_BOT_USERNAME=
+```
+
+Untuk bot Telegram dan endpoint admin:
 
 ```text
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_WEBHOOK_SECRET=
 WEBHOOK_SETUP_KEY=
-BASE_URL=https://domain-anda.vercel.app
-OWNER_TELEGRAM_ID=123456789
-
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-
-TELEGRAM_API_ID=
-TELEGRAM_API_HASH=
-TELEGRAM_USER_SESSION=
-
-TARGET_BOT_USERNAME=NamaBotTujuan
+BASE_URL=https://domain-production-anda.vercel.app
 BRIDGE_WORKER_SECRET=
+OWNER_TELEGRAM_ID=
+```
 
+Opsional:
+
+```text
 RELAY_TIMEOUT_MS=120000
 RELAY_POLL_MS=1200
 RELAY_SETTLE_MS=2200
 MAX_RELAY_TEXT_CHARS=4000
 ```
 
-`TARGET_BOT_USERNAME` dapat ditulis `NamaBotTujuan` atau `@NamaBotTujuan`.
+Setelah mengubah Environment Variables di Vercel, lakukan **Redeploy**.
 
-`OWNER_TELEGRAM_ID` opsional tetapi disarankan. Jika diisi, hanya Telegram user ID tersebut yang dapat memakai bot relay.
+## 3. TELEGRAM_USER_SESSION
 
-`BASE_URL` adalah URL root deployment production Vercel, misalnya `https://nama-project.vercel.app`. Variable ini sengaja tidak memakai prefix `PUBLIC_`, sehingga dapat disimpan sebagai environment variable Sensitive/Secret jika kebijakan Vercel Anda mewajibkannya. Jangan tambahkan `/api` atau path lain.
-
-
-## 4. Membuat TELEGRAM_USER_SESSION
-
-Setelah deploy dan API ID/Hash sudah tersedia, buka:
+Jika session belum ada, setelah deploy buka:
 
 ```text
 https://DOMAIN/setup-userbot.html
 ```
 
-Masukkan `WEBHOOK_SETUP_KEY`, nomor Telegram userbot, kode login Telegram, dan password 2FA jika diminta.
+Masukkan `WEBHOOK_SETUP_KEY`, nomor Telegram userbot, kode login, dan password 2FA jika diminta.
 
-Setelah berhasil, copy `sessionString` ke Vercel sebagai:
+Copy `sessionString` hasilnya ke Vercel:
 
 ```text
 TELEGRAM_USER_SESSION=...
 ```
 
-Lalu Redeploy.
+Lalu redeploy.
 
-Session string adalah kredensial login penuh akun Telegram tersebut. Simpan sebagai secret dan jangan commit ke repository.
+`TELEGRAM_USER_SESSION` adalah kredensial login akun Telegram. Simpan hanya sebagai secret server-side.
 
-## 5. Setup webhook
+## 4. Cek Web Access
 
 Buka:
 
 ```text
-https://DOMAIN/api/setup-webhook?key=WEBHOOK_SETUP_KEY_ANDA
+https://DOMAIN/api/web?health=1
 ```
 
-Cek health:
+Jika benar, respons akan berisi:
 
-```text
-https://DOMAIN/api/health
+```json
+{
+  "ok": true,
+  "ready": true,
+  "version": "5.4"
+}
 ```
 
-Tes userbot + resolve bot tujuan:
+Jika `ready` bernilai `false`, lihat `checks` dan `message` untuk mengetahui bagian yang belum siap.
 
-```text
-https://DOMAIN/api/userbot-test?key=WEBHOOK_SETUP_KEY_ANDA
-```
-
-Tes percakapan `/start` ke bot tujuan:
-
-```text
-https://DOMAIN/api/target-test?key=WEBHOOK_SETUP_KEY_ANDA
-```
-
-## 6. Penggunaan
-
-Kirim pesan teks biasa ke bot Anda. Contoh:
-
-```text
-ABC-123-XYZ
-```
-
-Bot Anda akan menampilkan progress, userbot meneruskan `ABC-123-XYZ` ke bot tujuan, kemudian progress tersebut diubah menjadi balasan dari bot tujuan.
-
-Jika balasan bot tujuan memiliki URL button, button tersebut ikut tampil pada bot Anda.
-
-Untuk debug satu request:
-
-```text
-/debug ABC-123-XYZ
-```
-
-Debug menambahkan target, Job ID, jumlah message, dan ID message terakhir.
-
-## Catatan Vercel
-
-Project ini menggunakan pola **connect → kirim → poll balasan → disconnect** pada setiap job. Ini cocok untuk Vercel tanpa worker VPS persisten, selama bot tujuan membalas sebelum batas `RELAY_TIMEOUT_MS` dan batas durasi function Vercel.
-
-## 7. Web Access v5.3
-
-Project sekarang juga memiliki halaman web di root domain:
+Kemudian buka:
 
 ```text
 https://DOMAIN/
 ```
 
-Tampilan web sudah responsive untuk desktop dan mobile, memiliki indikator health service, form request, polling status job, output, serta tombol menuju `@linknetflixcookiesbot`.
+Indikator header akan menampilkan:
 
-### Migrasi Supabase untuk Web Access
+- `System ready` — backend siap.
+- `Setup required` — ada environment/schema yang belum lengkap.
+- `System offline` — endpoint web tidak dapat diakses.
 
-Jalankan ulang seluruh `supabase.sql` di Supabase SQL Editor. Script bersifat kompatibel dengan tabel lama dan akan:
-
-- membuat `telegram_chat_id` dapat kosong untuk job dari browser;
-- menambah `request_source` untuk membedakan job `telegram` dan `web`;
-- menambah `web_access_hash` untuk melindungi endpoint status request web.
-
-Setelah SQL selesai dijalankan, redeploy project ke Vercel.
-
-### Mode keamanan browser
-
-Endpoint `/api/web` sengaja hanya menerima input demo non-sensitif yang diawali `DEMO:`. Cookie akun, password, session ID, access token, dan kredensial login lain ditolak. Hasil web juga disanitasi dan URL button dari relay tidak diekspos ke browser.
-
-Contoh:
+Tes browser:
 
 ```text
 DEMO: Test Web Access
 ```
 
-Alur browser:
+Demo memverifikasi alur Vercel → Supabase → Telegram userbot → target bot tanpa meneruskan cookie/session login pengguna.
 
-1. `POST /api/web` membuat job dan mengembalikan `id` + access token sementara.
-2. Browser melakukan polling `GET /api/web?id=...&token=...`.
-3. Worker memproses job dengan queue yang sama.
-4. Hasil teks yang sudah disanitasi tampil langsung di halaman web.
+## 5. Setup webhook Telegram
+
+Setelah `BASE_URL` memakai domain production yang benar, buka:
+
+```text
+https://DOMAIN/api/setup-webhook?key=WEBHOOK_SETUP_KEY_ANDA
+```
+
+Endpoint pengecekan lain:
+
+```text
+https://DOMAIN/api/health
+https://DOMAIN/api/config-test?key=WEBHOOK_SETUP_KEY_ANDA
+https://DOMAIN/api/runtime-test?key=WEBHOOK_SETUP_KEY_ANDA
+https://DOMAIN/api/userbot-test?key=WEBHOOK_SETUP_KEY_ANDA
+https://DOMAIN/api/target-test?key=WEBHOOK_SETUP_KEY_ANDA
+```
+
+## 6. Jika website masih berhenti di Queued
+
+Periksa berurutan:
+
+1. `https://DOMAIN/api/web?health=1` harus `ready: true`.
+2. Pastikan seluruh `supabase.sql` v5.4 sudah dijalankan.
+3. Vercel → Project → Logs, cari `claim web job failed` atau `direct web worker failed`.
+4. Pastikan `TELEGRAM_USER_SESSION` masih valid.
+5. Pastikan `TARGET_BOT_USERNAME` benar dan akun userbot dapat membuka target tersebut.
+6. Redeploy setelah setiap perubahan Environment Variables.
+
+Untuk v5.4, `BASE_URL` tidak lagi menentukan apakah job **browser** dapat dimulai. `BASE_URL` masih dipakai oleh webhook/admin/worker Telegram lama.
