@@ -19,6 +19,7 @@ import {
   sendPlainMessage
 } from "../lib/telegram-bot.js";
 import { kickBridgeWorker } from "../lib/kick-worker.js";
+import { sanitizeWebOutput } from "../lib/safe-relay.js";
 
 function esc(value = "") {
   return String(value)
@@ -234,10 +235,18 @@ async function processOneJob(job) {
     const sent = await sendRelayText(client, job.input_payload);
     const result = await waitForTargetReply(client, sent.sentMessageId);
 
+    const isWebJob = job.request_source === "web";
+    const safeMessages = isWebJob
+      ? (result.messages || []).map(item => ({
+          messageId: item.messageId,
+          text: sanitizeWebOutput(item.text || "")
+        }))
+      : result.messages;
+
     const storedResult = {
-      bridge: "5.2-branded-relay-vercel",
-      target: `@${targetUsername()}`,
-      messages: result.messages,
+      bridge: "5.3-web-access",
+      target: isWebJob ? undefined : `@${targetUsername()}`,
+      messages: safeMessages,
       received_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
     };
@@ -247,7 +256,9 @@ async function processOneJob(job) {
       target_result_message_id: result.resultMessageId
     });
 
-    await sendResultToUser(job, result);
+    if (!isWebJob && job.telegram_chat_id) {
+      await sendResultToUser(job, result);
+    }
 
     return {
       ok: true,
@@ -263,10 +274,12 @@ async function processOneJob(job) {
       console.error("failJob update failed:", dbError);
     }
 
-    try {
-      await sendFailureToUser(job, error);
-    } catch (sendError) {
-      console.error("sendFailureToUser failed:", sendError);
+    if (job.request_source !== "web" && job.telegram_chat_id) {
+      try {
+        await sendFailureToUser(job, error);
+      } catch (sendError) {
+        console.error("sendFailureToUser failed:", sendError);
+      }
     }
 
     return {

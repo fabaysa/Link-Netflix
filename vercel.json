@@ -11,6 +11,9 @@
     },
     "api/userbot-auth.js": {
       "maxDuration": 90
+    },
+    "api/web.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

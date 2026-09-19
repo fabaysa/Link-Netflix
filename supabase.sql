@@ -15,7 +15,10 @@ create table if not exists public.gemini_checker_jobs (
   id uuid primary key default gen_random_uuid(),
   telegram_user_id bigint references public.gemini_checker_users(telegram_user_id)
     on delete set null,
-  telegram_chat_id bigint not null,
+  telegram_chat_id bigint,
+  request_source text not null default 'telegram'
+    check (request_source in ('telegram', 'web')),
+  web_access_hash text,
   telegram_progress_message_id bigint,
   input_type text not null default 'text'
     check (input_type in ('text', 'txt')),
@@ -38,6 +41,17 @@ create table if not exists public.gemini_checker_jobs (
   updated_at timestamptz not null default now(),
   completed_at timestamptz
 );
+
+
+-- Migration for projects created before Web Access was added.
+alter table public.gemini_checker_jobs
+  alter column telegram_chat_id drop not null;
+
+alter table public.gemini_checker_jobs
+  add column if not exists request_source text not null default 'telegram';
+
+alter table public.gemini_checker_jobs
+  add column if not exists web_access_hash text;
 
 create index if not exists gemini_checker_jobs_status_created_idx
   on public.gemini_checker_jobs(status, created_at);

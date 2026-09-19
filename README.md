@@ -140,3 +140,40 @@ Debug menambahkan target, Job ID, jumlah message, dan ID message terakhir.
 ## Catatan Vercel
 
 Project ini menggunakan pola **connect → kirim → poll balasan → disconnect** pada setiap job. Ini cocok untuk Vercel tanpa worker VPS persisten, selama bot tujuan membalas sebelum batas `RELAY_TIMEOUT_MS` dan batas durasi function Vercel.
+
+## 7. Web Access v5.3
+
+Project sekarang juga memiliki halaman web di root domain:
+
+```text
+https://DOMAIN/
+```
+
+Tampilan web sudah responsive untuk desktop dan mobile, memiliki indikator health service, form request, polling status job, output, serta tombol menuju `@linknetflixcookiesbot`.
+
+### Migrasi Supabase untuk Web Access
+
+Jalankan ulang seluruh `supabase.sql` di Supabase SQL Editor. Script bersifat kompatibel dengan tabel lama dan akan:
+
+- membuat `telegram_chat_id` dapat kosong untuk job dari browser;
+- menambah `request_source` untuk membedakan job `telegram` dan `web`;
+- menambah `web_access_hash` untuk melindungi endpoint status request web.
+
+Setelah SQL selesai dijalankan, redeploy project ke Vercel.
+
+### Mode keamanan browser
+
+Endpoint `/api/web` sengaja hanya menerima input demo non-sensitif yang diawali `DEMO:`. Cookie akun, password, session ID, access token, dan kredensial login lain ditolak. Hasil web juga disanitasi dan URL button dari relay tidak diekspos ke browser.
+
+Contoh:
+
+```text
+DEMO: Test Web Access
+```
+
+Alur browser:
+
+1. `POST /api/web` membuat job dan mengembalikan `id` + access token sementara.
+2. Browser melakukan polling `GET /api/web?id=...&token=...`.
+3. Worker memproses job dengan queue yang sama.
+4. Hasil teks yang sudah disanitasi tampil langsung di halaman web.
