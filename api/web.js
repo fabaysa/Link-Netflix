@@ -5,6 +5,7 @@ import { maxRelayChars, normalizeRelayText } from "../lib/input.js";
 import { enqueueJob } from "../lib/queue.js";
 import { isSafeDemoInput } from "../lib/safe-relay.js";
 import { runWebWorker } from "../lib/web-worker.js";
+import { getPublicDeviceLinks } from "../lib/device-links.js";
 
 function accessHash(token = "") {
   return crypto.createHash("sha256").update(String(token)).digest("hex");
@@ -26,7 +27,10 @@ function publicJob(row) {
     completedAt: row.completed_at || null
   };
 
-  if (row.status === "completed") response.result = row.result || null;
+  if (row.status === "completed") {
+    response.result = row.result || null;
+    response.deviceLinks = getPublicDeviceLinks();
+  }
   if (row.status === "failed") response.error = row.last_error || "Request gagal diproses.";
   return response;
 }
@@ -88,7 +92,7 @@ async function handleHealth(_req, res) {
   return res.status(200).json({
     ok: true,
     ready,
-    version: "5.4",
+    version: "5.5",
     checks: { ...checks, database, workerRpc },
     message: ready ? "Web Access siap digunakan." : databaseMessage
   });

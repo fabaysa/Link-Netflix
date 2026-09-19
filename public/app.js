@@ -13,10 +13,23 @@ const copyBtn = $("copyBtn");
 const systemPill = $("systemPill");
 const systemText = $("systemText");
 const toast = $("toast");
+const deviceAccess = $("deviceAccess");
 
 const timelineQueued = $("timelineQueued");
 const timelineProcessing = $("timelineProcessing");
 const timelineDone = $("timelineDone");
+
+const deviceElements = {
+  pc: { url: $("pcUrl"), open: $("pcOpen") },
+  mobile: { url: $("mobileUrl"), open: $("mobileOpen") },
+  tv: { url: $("tvUrl"), open: $("tvOpen") }
+};
+
+const allowedDeviceHosts = new Set([
+  "netflix.com",
+  "www.netflix.com",
+  "help.netflix.com"
+]);
 
 let activePoll = null;
 let toastTimer = null;
@@ -70,6 +83,54 @@ function setTimeline(status) {
   }
 }
 
+function safeDeviceUrl(value) {
+  try {
+    const url = new URL(String(value || ""));
+    const host = url.hostname.toLowerCase();
+    const sensitive = /(?:nftoken|session(?:id|_id)?|access_token|refresh_token|auth_token|password|cookie)/i;
+
+    if (url.protocol !== "https:") return "";
+    if (!allowedDeviceHosts.has(host)) return "";
+    if (url.username || url.password) return "";
+    if (sensitive.test(url.pathname) || sensitive.test(url.search) || sensitive.test(url.hash)) return "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function resetDeviceLinks() {
+  deviceAccess.classList.add("hidden");
+  Object.values(deviceElements).forEach(item => {
+    item.url.textContent = "-";
+    item.open.href = "#";
+    item.open.setAttribute("aria-disabled", "true");
+  });
+}
+
+function renderDeviceLinks(links) {
+  let visible = 0;
+
+  for (const key of Object.keys(deviceElements)) {
+    const target = deviceElements[key];
+    const url = safeDeviceUrl(links?.[key]?.url);
+
+    if (!url) {
+      target.url.textContent = "Tidak tersedia";
+      target.open.href = "#";
+      target.open.setAttribute("aria-disabled", "true");
+      continue;
+    }
+
+    visible += 1;
+    target.url.textContent = url;
+    target.open.href = url;
+    target.open.removeAttribute("aria-disabled");
+  }
+
+  deviceAccess.classList.toggle("hidden", visible === 0);
+}
+
 function renderResult(data) {
   setBadge(data.status);
   setTimeline(data.status);
@@ -86,13 +147,16 @@ function renderResult(data) {
     outputText.textContent = text;
     outputBox.classList.remove("hidden");
     errorBox.classList.add("hidden");
+    renderDeviceLinks(data.deviceLinks);
   } else if (data.status === "failed") {
     errorBox.textContent = data.error || "Request gagal diproses.";
     errorBox.classList.remove("hidden");
     outputBox.classList.add("hidden");
+    resetDeviceLinks();
   } else {
     outputBox.classList.add("hidden");
     errorBox.classList.add("hidden");
+    resetDeviceLinks();
   }
 }
 
@@ -123,6 +187,7 @@ function failPolling(message) {
   errorBox.textContent = message;
   errorBox.classList.remove("hidden");
   outputBox.classList.add("hidden");
+  resetDeviceLinks();
   resultEmpty.classList.add("hidden");
   resultLive.classList.remove("hidden");
   finishPolling();
@@ -156,7 +221,6 @@ async function pollJob(id, accessToken) {
   } catch (error) {
     pollFailures += 1;
 
-    // Jangan langsung mematikan request karena satu network hiccup/edge cold start.
     if (pollFailures <= 4) {
       activePoll = setTimeout(() => pollJob(id, accessToken), 1500 * pollFailures);
       return;
@@ -198,6 +262,7 @@ submitBtn.addEventListener("click", async () => {
   resultLive.classList.remove("hidden");
   outputBox.classList.add("hidden");
   errorBox.classList.add("hidden");
+  resetDeviceLinks();
   setBadge("queued");
   setTimeline("queued");
 
@@ -229,12 +294,47 @@ payload.addEventListener("input", () => {
   charCount.textContent = `${payload.value.length} / 1000`;
 });
 
-copyBtn.addEventListener("click", async () => {
+async function copyText(value, successMessage) {
+  const text = String(value || "").trim();
+  if (!text) {
+    showToast("URL belum tersedia.");
+    return;
+  }
+
   try {
-    await navigator.clipboard.writeText(outputText.textContent || "");
-    showToast("Output disalin.");
+    await navigator.clipboard.writeText(text);
+    showToast(successMessage);
   } catch {
-    showToast("Tidak dapat menyalin output.");
+    const temp = document.createElement("textarea");
+    temp.value = text;
+    temp.setAttribute("readonly", "");
+    temp.style.position = "fixed";
+    temp.style.opacity = "0";
+    document.body.appendChild(temp);
+    temp.select();
+    const copied = document.execCommand("copy");
+    temp.remove();
+    showToast(copied ? successMessage : "Tidak dapat menyalin URL.");
+  }
+}
+
+copyBtn.addEventListener("click", async () => {
+  await copyText(outputText.textContent || "", "Output disalin.");
+});
+
+document.addEventListener("click", async (event) => {
+  const copyButton = event.target.closest("[data-copy-device]");
+  if (copyButton) {
+    const key = copyButton.dataset.copyDevice;
+    const url = safeDeviceUrl(deviceElements[key]?.open?.href);
+    await copyText(url, `URL ${deviceElements[key]?.url?.textContent || "perangkat"} disalin.`);
+    return;
+  }
+
+  const disabledLink = event.target.closest('a[aria-disabled="true"]');
+  if (disabledLink) {
+    event.preventDefault();
+    showToast("URL perangkat belum tersedia.");
   }
 });
 
@@ -290,6 +390,7 @@ function resumeJob() {
   }
 }
 
+resetDeviceLinks();
 payload.value = "DEMO: Test Web Access";
 charCount.textContent = `${payload.value.length} / 1000`;
 checkHealth();

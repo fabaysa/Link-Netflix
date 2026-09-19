@@ -1,6 +1,6 @@
-# Link Netflix Web v5.4 — Vercel + Supabase
+# Link Netflix Web v5.5 — Vercel + Supabase
 
-Versi 5.4 memperbaiki alur Web Access agar tidak berhenti di status **Queued** ketika `BASE_URL` salah, deployment Vercel memakai preview URL, atau self-fetch worker gagal.
+Versi 5.5 melanjutkan perbaikan Web Access v5.4 dan menambahkan panel akses perangkat PC/Laptop, HP/Mobile, dan TV/Smart TV dengan tombol Buka serta Salin URL. Alur browser tetap tidak menerima atau mengekspos cookie/session login.
 
 ## Perbaikan utama v5.4
 
@@ -164,3 +164,23 @@ Periksa berurutan:
 6. Redeploy setelah setiap perubahan Environment Variables.
 
 Untuk v5.4, `BASE_URL` tidak lagi menentukan apakah job **browser** dapat dimulai. `BASE_URL` masih dipakai oleh webhook/admin/worker Telegram lama.
+
+## 8. Device Access v5.5
+
+Setelah request Web Access selesai, halaman hasil sekarang menampilkan tiga pilihan perangkat:
+
+- PC / Laptop
+- HP / Mobile
+- TV / Smart TV
+
+Setiap pilihan memiliki tombol **Buka** dan **Salin URL**. URL default menggunakan halaman resmi Netflix dan tidak membawa cookie, password, session ID, access token, atau token login lainnya.
+
+Opsional, URL publik dapat diatur di Vercel dengan:
+
+```text
+WEB_PC_ACCESS_URL=https://www.netflix.com/id/login
+WEB_MOBILE_ACCESS_URL=https://www.netflix.com/id/login
+WEB_TV_ACCESS_URL=https://www.netflix.com/tv8
+```
+
+Untuk mencegah URL kredensial terekspos, backend hanya menerima URL HTTPS pada domain `netflix.com`, `www.netflix.com`, atau `help.netflix.com`. URL dengan penanda seperti `nftoken`, `sessionid`, `access_token`, `password`, atau `cookie` otomatis ditolak dan diganti dengan default aman.

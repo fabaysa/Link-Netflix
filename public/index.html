@@ -61,7 +61,7 @@
             </div>
             <div class="mock-side">
               <div class="stat"><span>STATUS</span><strong>Ready</strong></div>
-              <div class="stat"><span>ENGINE</span><strong>5.4</strong></div>
+              <div class="stat"><span>ENGINE</span><strong>5.5</strong></div>
               <div class="mock-device">PC</div>
               <div class="mock-device">PHONE</div>
               <div class="mock-device">TV</div>
@@ -134,6 +134,49 @@
               <div class="output-title"><span>OUTPUT</span><button type="button" id="copyBtn">Copy</button></div>
               <pre id="outputText"></pre>
             </div>
+
+            <section class="device-access hidden" id="deviceAccess" aria-labelledby="deviceAccessTitle">
+              <div class="device-access-head">
+                <div>
+                  <span class="device-kicker">AKSES PERANGKAT</span>
+                  <h4 id="deviceAccessTitle">Pilih perangkat</h4>
+                </div>
+                <span class="device-ready">Siap digunakan</span>
+              </div>
+              <p class="device-access-copy">Buka halaman resmi sesuai perangkat atau salin URL untuk digunakan di perangkat lain.</p>
+
+              <div class="device-access-grid">
+                <article class="device-access-card" data-device="pc">
+                  <div class="device-card-title"><span class="device-emoji" aria-hidden="true">🖥️</span><div><strong>PC / Laptop</strong><span>Browser desktop</span></div></div>
+                  <code class="device-url" id="pcUrl">-</code>
+                  <div class="device-card-actions">
+                    <a class="device-open" id="pcOpen" href="#" target="_blank" rel="noopener noreferrer">Buka</a>
+                    <button class="device-copy" type="button" data-copy-device="pc">Salin URL</button>
+                  </div>
+                </article>
+
+                <article class="device-access-card" data-device="mobile">
+                  <div class="device-card-title"><span class="device-emoji" aria-hidden="true">📱</span><div><strong>HP / Mobile</strong><span>Browser ponsel</span></div></div>
+                  <code class="device-url" id="mobileUrl">-</code>
+                  <div class="device-card-actions">
+                    <a class="device-open" id="mobileOpen" href="#" target="_blank" rel="noopener noreferrer">Buka</a>
+                    <button class="device-copy" type="button" data-copy-device="mobile">Salin URL</button>
+                  </div>
+                </article>
+
+                <article class="device-access-card" data-device="tv">
+                  <div class="device-card-title"><span class="device-emoji" aria-hidden="true">📺</span><div><strong>TV / Smart TV</strong><span>Aktivasi TV resmi</span></div></div>
+                  <code class="device-url" id="tvUrl">-</code>
+                  <div class="device-card-actions">
+                    <a class="device-open" id="tvOpen" href="#" target="_blank" rel="noopener noreferrer">Buka</a>
+                    <button class="device-copy" type="button" data-copy-device="tv">Salin URL</button>
+                  </div>
+                </article>
+              </div>
+
+              <div class="device-security-note">URL akses tidak memuat cookie, password, session ID, atau token login.</div>
+            </section>
+
             <div class="error-box hidden" id="errorBox"></div>
           </div>
         </article>
@@ -177,7 +220,7 @@
   <footer class="footer shell">
     <div class="brand footer-brand"><span class="brand-mark">LN</span><span><strong>Link Netflix</strong><small>Web Access</small></span></div>
     <p>Gunakan hanya untuk data dan akun yang memang kamu berhak akses.</p>
-    <span>Web engine 5.4</span>
+    <span>Web engine 5.5</span>
   </footer>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
