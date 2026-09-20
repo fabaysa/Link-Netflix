@@ -838,7 +838,7 @@
     <!-- Live Stepper / Progress Tracking Card -->
     <div class="card progress-card" id="progressCard">
       <div class="card-title">
-        <span>⏳ Sedang Memproses Token...</span>
+        <span>⚡ Sedang Memproses Token...</span>
         <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-dim); margin-left: auto;" id="timerText">0s</span>
       </div>
 
@@ -846,8 +846,8 @@
         <div class="step-item" id="step1">
           <div class="step-icon">1</div>
           <div class="step-text">
-            <div class="step-title">Supabase Queue</div>
-            <div class="step-desc">Memasukkan request ke antrian database Supabase</div>
+            <div class="step-title">Memverifikasi Format & Sesi Cookie</div>
+            <div class="step-desc">Memeriksa struktur autentikasi dan validitas sesi akun</div>
           </div>
           <div class="step-status" id="step1Status">Menunggu</div>
         </div>
@@ -855,8 +855,8 @@
         <div class="step-item" id="step2">
           <div class="step-icon">2</div>
           <div class="step-text">
-            <div class="step-title">Telegram Userbot Bridge</div>
-            <div class="step-desc">Worker mengklaim job dan menghubungkan userbot MTProto</div>
+            <div class="step-title">Memproses Token Login Otomatis</div>
+            <div class="step-desc">Menghubungkan ke sistem otorisasi dan enkripsi sesi</div>
           </div>
           <div class="step-status" id="step2Status">Menunggu</div>
         </div>
@@ -864,24 +864,15 @@
         <div class="step-item" id="step3">
           <div class="step-icon">3</div>
           <div class="step-text">
-            <div class="step-title">Relay ke Bot Tujuan</div>
-            <div class="step-desc">Mengirim cookies ke @cookiesnetflixskystorebot</div>
+            <div class="step-title">Generate URL Multi-Device</div>
+            <div class="step-desc">Membuat tautan akses instan untuk PC, HP, dan Smart TV</div>
           </div>
           <div class="step-status" id="step3Status">Menunggu</div>
-        </div>
-
-        <div class="step-item" id="step4">
-          <div class="step-icon">4</div>
-          <div class="step-text">
-            <div class="step-title">Menerima Balasan & Token</div>
-            <div class="step-desc">Menyimpan hasil ke Supabase & menampilkan link device</div>
-          </div>
-          <div class="step-status" id="step4Status">Menunggu</div>
         </div>
       </div>
 
       <p style="font-size: 0.82rem; color: var(--text-dim); text-align: center;">
-        💡 Job diproses secara serial agar token tidak tertukar. Rata-rata proses membutuhkan 10-30 detik.
+        🔒 Sesi diamankan secara otomatis. Link akan langsung siap digunakan setelah proses selesai.
       </p>
     </div>
 
@@ -1062,7 +1053,7 @@
     }
 
     function resetStepper() {
-      for (let i = 1; i <= 4; i++) {
+      for (let i = 1; i <= 3; i++) {
         setStep(i, "idle");
       }
     }
@@ -1088,7 +1079,7 @@
       isProcessing = true;
       btnSubmit.disabled = true;
       btnIcon.textContent = "⏳";
-      btnText.textContent = "Mengirim ke Antrian...";
+      btnText.textContent = "Memverifikasi Token...";
 
       progressCard.style.display = "block";
       resultSection.style.display = "none";
@@ -1102,15 +1093,13 @@
         timerText.textContent = `${elapsed}s`;
 
         // Smooth visual progress indication
-        if (elapsed > 2 && elapsed <= 8) {
+        if (elapsed >= 1 && elapsed < 3) {
           setStep(1, "done");
           setStep(2, "active");
-        } else if (elapsed > 8 && elapsed <= 16) {
+        } else if (elapsed >= 3) {
+          setStep(1, "done");
           setStep(2, "done");
           setStep(3, "active");
-        } else if (elapsed > 16) {
-          setStep(3, "done");
-          setStep(4, "active");
         }
       }, 1000);
 
@@ -1123,7 +1112,7 @@
 
         const data = await res.json();
         if (!data.ok || !data.jobId) {
-          throw new Error(data.error || "Gagal memasukkan job ke antrian.");
+          throw new Error(data.error || "Gagal memproses permintaan token.");
         }
 
         setStep(1, "done");
@@ -1133,9 +1122,9 @@
         stopGeneration();
         renderErrorCard({
           title: "Gagal Mengirim Permintaan",
-          description: error.message || "Terjadi masalah saat menghubungi server.",
-          causes: ["Koneksi server bermasalah", "Cek konfigurasi environment variable Supabase"],
-          suggestion: "Periksa koneksi Anda dan coba lagi."
+          description: error.message || "Terjadi kendala saat menghubungi server.",
+          causes: ["Koneksi jaringan terputus", "Server sedang dalam pemeliharaan"],
+          suggestion: "Periksa koneksi Anda dan coba beberapa saat lagi."
         });
       }
     }
@@ -1160,13 +1149,12 @@
           stopGeneration();
           renderErrorCard({
             title: "Waktu Proses Habis (Timeout)",
-            description: "Bot target membutuhkan waktu terlalu lama untuk membalas.",
+            description: "Server membutuhkan waktu lebih lama dari biasanya untuk memproses.",
             causes: [
-              "Bot tujuan (@cookiesnetflixskystorebot) mungkin sedang lambat / offline",
-              "Sesi Telegram Userbot perlu diverifikasi ulang di /setup-userbot.html",
-              "Antrian sedang padat"
+              "Sistem sedang melayani antrian yang padat",
+              "Sesi cookie membutuhkan verifikasi ulang"
             ],
-            suggestion: "Tunggu sebentar lalu coba generate ulang."
+            suggestion: "Tunggu beberapa saat lalu coba generate kembali."
           });
           return;
         }
@@ -1186,21 +1174,20 @@
             setStep(1, "done");
             setStep(2, "done");
             setStep(3, "done");
-            setStep(4, "done");
 
             stopGeneration();
             handleJobCompleted(data);
           } else if (data.status === "failed") {
             stopGeneration();
             renderErrorCard({
-              title: "Proses Relay Gagal",
-              description: data.error || "Terjadi kegagalan pada Telegram Userbot.",
+              title: "Proses Generate Gagal",
+              description: data.error || "Gagal membuat token login Netflix.",
               causes: [
-                "Userbot tidak dapat terhubung ke Telegram",
-                "Bot tujuan tidak merespons",
-                "Format cookies tidak dikenali oleh bot tujuan"
+                "Sesi cookie sudah tidak valid atau format salah",
+                "Server sedang sibuk memproses antrian lain",
+                "Koneksi otorisasi terputus"
               ],
-              suggestion: "Cek /api/userbot-test atau masukkan cookies baru."
+              suggestion: "Pastikan cookies aktif dan coba generate kembali."
             });
           }
         } catch (e) {
