@@ -1,6 +1,0 @@
-{
-  "targetChat": "",
-  "intervalSeconds": 30,
-  "messageText": "Pesan otomatis dari akun Telegram.",
-  "enabled": false
-}
