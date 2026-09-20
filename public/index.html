@@ -788,10 +788,6 @@
   <div class="container">
     <!-- Header -->
     <header>
-      <div class="brand-badge">
-        <span class="status-dot"></span>
-        <span>Supabase & Userbot Bridge Active</span>
-      </div>
       <h1>🍪 <span>Netflix Token Generator</span></h1>
       <p class="subtitle">
         Tempelkan cookies Netflix Anda untuk membuat link login instan bagi PC / Laptop, HP / Mobile, dan Smart TV secara otomatis.
@@ -908,20 +904,6 @@
 
       <div class="faq-item">
         <div class="faq-question">
-          <span>Bagaimana cara mengambil Cookie Netflix?</span>
-          <span class="faq-arrow">▼</span>
-        </div>
-        <div class="faq-answer">
-          1. Buka browser di PC/Laptop (Chrome, Edge, atau Firefox).<br>
-          2. Pastikan Anda sudah login ke akun Netflix.<br>
-          3. Pasang ekstensi browser seperti <b>Cookie-Editor</b>.<br>
-          4. Buka ekstensi tersebut di halaman Netflix, lalu klik <b>Export</b> (format JSON atau string).<br>
-          5. Tempelkan cookies tersebut ke kotak input di atas.
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-question">
           <span>Bagaimana cara menggunakan Link yang digenerate?</span>
           <span class="faq-arrow">▼</span>
         </div>
@@ -954,7 +936,7 @@
 
   <!-- Footer -->
   <footer>
-    <p>Netflix Token Relay Web Engine v5.2 • Powered by Vercel + Supabase + Telegram MTProto Userbot</p>
+    <p>Powered by iLink.in Store</p>
     <p style="margin-top: 6px;">
       <a href="/setup-userbot.html" target="_blank">Setup Userbot Session</a> • 
       <a href="/api/health" target="_blank">Server Health</a>
@@ -1170,7 +1152,7 @@
 
     function pollJobStatus(jobId) {
       let attempts = 0;
-      const maxAttempts = 75; // 75 * 1.6s ~ 120 seconds max
+      const maxAttempts = 160; // 160 * 0.75s ~ 120 seconds max
 
       pollInterval = setInterval(async () => {
         attempts++;
@@ -1224,7 +1206,7 @@
         } catch (e) {
           console.error("Polling error:", e);
         }
-      }, 1600);
+      }, 750);
     }
 
     function handleJobCompleted(jobData) {
@@ -1319,9 +1301,7 @@
             <button class="btn btn-secondary btn-sm" onclick="copyAllLinks()" type="button">
               📋 Salin Semua Link
             </button>
-            <span class="raw-toggle" onclick="toggleRaw()">Lihat balasan bot asli</span>
           </div>
-          <div class="raw-box" id="rawBotReply">${(parsed.rawText || "").replace(/</g, "&lt;")}</div>
         </div>
       `;
 
@@ -1370,13 +1350,11 @@
             <span><strong>Solusi:</strong> ${parsed.suggestion || "Ambil cookie fresh dan coba lagi."}</span>
           </div>
 
-          <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <button class="btn btn-primary" onclick="focusInput()" type="button">
               🔄 Masukkan Cookie Baru
             </button>
-            <span class="raw-toggle" onclick="toggleRaw()">Lihat balasan asli</span>
           </div>
-          <div class="raw-box" id="rawBotReply">${(parsed.rawText || "").replace(/</g, "&lt;")}</div>
         </div>
       `;
 

@@ -43,7 +43,9 @@ function telegramKeyboard(urlButtons) {
     )
     .filter(row => row.length);
 
-  return rows.length ? { inline_keyboard: rows } : undefined;
+  rows.push([{ text: "🌐 Akses Website", url: "https://link-netflix.vercel.app" }]);
+
+  return { inline_keyboard: rows };
 }
 
 function mergeButtons(messages) {
@@ -55,11 +57,11 @@ function mergeButtons(messages) {
 }
 
 function brandingFooterHtml() {
-  return "";
+  return "\n\n⚡ <i>Powered by iLink.in Store</i>";
 }
 
 function brandingFooterPlain() {
-  return "";
+  return "\n\nPowered by iLink.in Store";
 }
 
 function alreadyHasBranding(text) {
@@ -112,6 +114,9 @@ function buildReplyText(result) {
 
   let text = parts.join("\n\n") || "(Bot tujuan membalas tanpa teks.)";
   text = transformReplyText(text);
+  if (!text.includes("iLink.in Store")) {
+    text += brandingFooterPlain();
+  }
   return text;
 }
 
@@ -122,6 +127,9 @@ function buildReplyHtml(result) {
 
   let html = parts.join("\n\n") || "(Bot tujuan membalas tanpa teks.)";
   html = transformReplyText(html);
+  if (!html.includes("iLink.in Store")) {
+    html += brandingFooterHtml();
+  }
   return html;
 }
 

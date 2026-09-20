@@ -58,11 +58,14 @@ async function handleMessage(message) {
       "",
       "⚠️ <b>Penting:</b> Pastikan Cookies Masih Aktif",
       "",
-      "📖 Klik <b>Bantuan/tutor</b> untuk melihat panduan penggunaan."
+      "📖 Klik <b>Bantuan/tutor</b> untuk melihat panduan penggunaan.",
+      "",
+      "⚡ <i>Powered by iLink.in Store</i>"
     ].join("\n"), {
       reply_markup: {
         inline_keyboard: [
           [{ text: "🗝️ Generate Cookie", callback_data: "generate_cookie" }],
+          [{ text: "🌐 Akses Website", url: "https://link-netflix.vercel.app" }],
           [{ text: "📖 Bantuan/tutor", callback_data: "bantuan" }]
         ]
       }
@@ -74,7 +77,7 @@ async function handleMessage(message) {
     const helpLines = [
           "📖 <b>Cara Menggunakan Bot:</b>",
           "",
-          "1️⃣ Klik tombol <b>🗝️ Generate Cookie</b>",
+          "1️⃣ Klik tombol <b>🗝️ Generate Cookie</b> atau buka Website kami",
           "2️⃣ Kirim/paste cookies Netflix kamu",
           "3️⃣ Tunggu bot memproses dan generate link",
           "4️⃣ Kamu akan mendapat link login untuk PC, HP, dan TV",
@@ -82,9 +85,17 @@ async function handleMessage(message) {
           "⚠️ Pastikan cookies masih aktif/valid",
           "💡 Kalo link udah expired, generate lagi aja",
           "",
-          "Ketik /start untuk kembali ke menu utama"
+          "Ketik /start untuk kembali ke menu utama",
+          "",
+          "⚡ <i>Powered by iLink.in Store</i>"
         ];
-    await sendMessage(chatId, helpLines.join("\n"));
+    await sendMessage(chatId, helpLines.join("\n"), {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🌐 Akses Website", url: "https://link-netflix.vercel.app" }]
+        ]
+      }
+    });
     return;
   }
 
@@ -169,8 +180,14 @@ async function handleCallbackQuery(callbackQuery) {
       "",
       "⏳ Setelah kamu kirim, aku akan generate NETFLIX Token link untuk kamu.",
       "",
-      "💡 <i>Langsung kirim/paste cookies-nya ya!</i>"
-    ].join("\n"));
+      "💡 <i>Langsung kirim/paste cookies-nya ya! Atau gunakan versi website:</i>"
+    ].join("\n"), {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🌐 Akses Website", url: "https://link-netflix.vercel.app" }]
+        ]
+      }
+    });
     return;
   }
 
@@ -178,7 +195,7 @@ async function handleCallbackQuery(callbackQuery) {
     const helpLines = [
           "📖 <b>Cara Menggunakan Bot:</b>",
           "",
-          "1️⃣ Klik tombol <b>🗝️ Generate Cookie</b>",
+          "1️⃣ Klik tombol <b>🗝️ Generate Cookie</b> atau gunakan Website",
           "2️⃣ Kirim/paste cookies Netflix kamu",
           "3️⃣ Tunggu bot memproses dan generate link",
           "4️⃣ Kamu akan mendapat link login untuk PC, HP, dan TV",
@@ -186,9 +203,17 @@ async function handleCallbackQuery(callbackQuery) {
           "⚠️ Pastikan cookies masih aktif/valid",
           "💡 Kalo link udah expired, generate lagi aja",
           "",
-          "Ketik /start untuk kembali ke menu utama"
+          "Ketik /start untuk kembali ke menu utama",
+          "",
+          "⚡ <i>Powered by iLink.in Store</i>"
         ];
-    await sendMessage(chatId, helpLines.join("\n"));
+    await sendMessage(chatId, helpLines.join("\n"), {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🌐 Akses Website", url: "https://link-netflix.vercel.app" }]
+        ]
+      }
+    });
     return;
   }
 }
