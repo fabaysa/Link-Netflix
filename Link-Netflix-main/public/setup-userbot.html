@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Setup Telegram Userbot Relay</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 32px auto; padding: 0 16px; }
+    .card { border: 1px solid #ddd; border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+    label { display:block; font-weight:600; margin:12px 0 6px; }
+    input, textarea { width:100%; box-sizing:border-box; padding:11px; border:1px solid #bbb; border-radius:8px; }
+    button { margin-top:14px; padding:11px 16px; cursor:pointer; border-radius:8px; border:1px solid #999; }
+    pre { white-space:pre-wrap; word-break:break-word; background:#f5f5f5; padding:12px; border-radius:8px; }
+    .warn { background:#fff5d6; padding:12px; border-radius:8px; }
+    .hidden { display:none; }
+  </style>
+</head>
+<body>
+  <h1>Setup Akun Telegram Userbot Relay v5.0</h1>
+  <p class="warn">
+    Gunakan akun Telegram khusus sebagai userbot relay. Session string adalah kredensial login penuh.
+    Jangan kirim session ke siapa pun dan jangan simpan di GitHub.
+  </p>
+
+  <div class="card">
+    <label>WEBHOOK_SETUP_KEY</label>
+    <input id="key" type="password" autocomplete="off" />
+
+    <label>Nomor Telegram userbot</label>
+    <input id="phone" placeholder="+628123456789" autocomplete="tel" />
+
+    <button id="sendCode">Kirim kode Telegram</button>
+    <pre id="startResult"></pre>
+  </div>
+
+  <div class="card hidden" id="verifyCard">
+    <label>Kode yang diterima dari Telegram</label>
+    <input id="code" autocomplete="one-time-code" />
+
+    <div id="passwordWrap" class="hidden">
+      <label>Password Two-Step Verification</label>
+      <input id="password" type="password" autocomplete="current-password" />
+    </div>
+
+    <button id="verify">Login & Buat Session</button>
+    <pre id="verifyResult"></pre>
+
+    <div id="sessionWrap" class="hidden">
+      <label>TELEGRAM_USER_SESSION</label>
+      <textarea id="session" rows="8" readonly></textarea>
+      <button id="copySession">Copy Session</button>
+      <p>
+        Masukkan nilai ini ke Vercel → Settings → Environment Variables →
+        <b>TELEGRAM_USER_SESSION</b>, Save, lalu Redeploy.
+      </p>
+    </div>
+  </div>
+
+<script>
+let loginId = "";
+
+const $ = id => document.getElementById(id);
+const pretty = value => JSON.stringify(value, null, 2);
+
+async function readApiResponse(res) {
+  const raw = await res.text();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {
+      ok: false,
+      httpStatus: res.status,
+      error: raw || `Server mengembalikan HTTP ${res.status} tanpa JSON.`
+    };
+  }
+}
+
+$("sendCode").onclick = async () => {
+  $("startResult").textContent = "Mengirim kode...";
+  try {
+    const res = await fetch("/api/userbot-login-start", {
+      method: "POST",
+      headers: {"content-type":"application/json"},
+      body: JSON.stringify({
+        setupKey: $("key").value,
+        phone: $("phone").value
+      })
+    });
+    const data = await readApiResponse(res);
+    $("startResult").textContent = pretty(data);
+    if (data.ok && data.loginId) {
+      loginId = data.loginId;
+      $("verifyCard").classList.remove("hidden");
+    }
+  } catch (e) {
+    $("startResult").textContent = String(e);
+  }
+};
+
+$("verify").onclick = async () => {
+  $("verifyResult").textContent = "Memverifikasi...";
+  try {
+    const res = await fetch("/api/userbot-login-verify", {
+      method: "POST",
+      headers: {"content-type":"application/json"},
+      body: JSON.stringify({
+        setupKey: $("key").value,
+        loginId,
+        code: $("code").value,
+        password: $("password").value
+      })
+    });
+    const data = await readApiResponse(res);
+
+    // Jangan tampilkan session dua kali di pre.
+    const safe = {...data};
+    delete safe.sessionString;
+    $("verifyResult").textContent = pretty(safe);
+
+    if (data.needs2FA) {
+      $("passwordWrap").classList.remove("hidden");
+    }
+
+    if (data.ok && data.sessionString) {
+      $("session").value = data.sessionString;
+      $("sessionWrap").classList.remove("hidden");
+      $("password").value = "";
+      $("code").value = "";
+    }
+  } catch (e) {
+    $("verifyResult").textContent = String(e);
+  }
+};
+
+$("copySession").onclick = async () => {
+  await navigator.clipboard.writeText($("session").value);
+  $("copySession").textContent = "Sudah dicopy";
+};
+</script>
+</body>
+</html>
