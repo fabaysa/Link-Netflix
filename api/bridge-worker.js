@@ -7,7 +7,12 @@ import {
   targetUsername
 } from "../lib/userbot.js";
 import { executeNetflixBridgeFlow } from "../lib/netflix-bridge.js";
-import { consumeClaimQuota, getBridgeAccounts, getSetting } from "../lib/store.js";
+import {
+  consumeClaimQuota,
+  getBridgeAccounts,
+  getSetting,
+  getActiveTargetBots
+} from "../lib/store.js";
 import {
   claimJob,
   completeJob,
@@ -306,30 +311,58 @@ async function processOneJob(job) {
     const payloadText = String(job.input_payload || "").trim();
     const isAutoGenerate = !payloadText || /^(generate|ambil|\/ambil|token)$/i.test(payloadText);
 
-    let result;
-    const configuredTarget = await getSetting("target_bot", targetUsername());
+    let result = null;
+    const activeBots = await getActiveTargetBots();
+    const candidateBots = activeBots.length > 0
+      ? activeBots.map((b) => b.username)
+      : [await getSetting("target_bot", targetUsername())];
+
     const countryPriority = await getSetting("country_priority", ["ID", "MY", "SG"]);
+    let lastError = null;
+    let successfulTarget = candidateBots[0];
 
     if (isAutoGenerate) {
-      console.log(`[worker] Menjalankan automated Netflix bridge flow untuk job ${job.id}`);
-      result = await executeNetflixBridgeFlow(client, {
-        targetBot: configuredTarget,
-        countryPriorities: countryPriority,
-        timeoutMs: 90000
-      });
+      for (const botName of candidateBots) {
+        try {
+          console.log(`[worker] Menjalankan automated Netflix bridge flow ke @${botName} untuk job ${job.id}`);
+          result = await executeNetflixBridgeFlow(client, {
+            targetBot: botName,
+            countryPriorities: countryPriority,
+            timeoutMs: 90000
+          });
+          if (result && (result.pcUrl || result.mobileUrl || result.tvUrl)) {
+            successfulTarget = botName;
+            break;
+          }
+        } catch (err) {
+          console.warn(`[worker] Bot @${botName} gagal (${err.message}). Mencoba bot target berikutnya...`);
+          lastError = err;
+        }
+      }
+      if (!result && lastError) throw lastError;
     } else {
-      console.log(`[worker] Menjalankan relay cookies untuk job ${job.id}`);
-      const sent = await sendRelayText(client, payloadText);
-      const relayRes = await waitForTargetReply(client, sent.sentMessageId);
-      result = {
-        ...relayRes,
-        sentMessageId: sent.sentMessageId
-      };
+      for (const botName of candidateBots) {
+        try {
+          console.log(`[worker] Menjalankan relay cookies ke @${botName} untuk job ${job.id}`);
+          const sent = await sendRelayText(client, payloadText, { targetBot: botName });
+          const relayRes = await waitForTargetReply(client, sent.sentMessageId, { targetBot: botName });
+          result = {
+            ...relayRes,
+            sentMessageId: sent.sentMessageId
+          };
+          successfulTarget = botName;
+          break;
+        } catch (err) {
+          console.warn(`[worker] Relay ke @${botName} gagal (${err.message}). Mencoba bot berikutnya...`);
+          lastError = err;
+        }
+      }
+      if (!result && lastError) throw lastError;
     }
 
     const storedResult = {
       bridge: "iLink-Netflix-v5.3",
-      target: `@${configuredTarget}`,
+      target: `@${successfulTarget}`,
       country: result.country || null,
       pcUrl: result.pcUrl || null,
       mobileUrl: result.mobileUrl || null,
