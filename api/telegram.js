@@ -881,16 +881,38 @@ async function handleHelp(chatId) {
 
 function buildRecordingKeyboard(rec) {
   const keyboard = [];
-  const btns = rec?.buttons || [];
+  const grid = rec?.keyboardGrid || [];
 
-  for (let i = 0; i < btns.length && i < 16; i += 4) {
-    const chunk = btns.slice(i, i + 4).map((b) => ({
-      text: `🔘 ${b.index}`,
-      callback_data: `rec_click:${b.index}`
-    }));
-    keyboard.push(chunk);
+  if (Array.isArray(grid) && grid.length > 0) {
+    for (const row of grid) {
+      const rowButtons = [];
+      for (const btn of row) {
+        if (btn.url) {
+          rowButtons.push({
+            text: `${btn.text} 🔗`,
+            url: btn.url
+          });
+        } else {
+          rowButtons.push({
+            text: btn.text || "Tombol",
+            callback_data: `rec_c:${btn.row}_${btn.column}`
+          });
+        }
+      }
+      if (rowButtons.length) keyboard.push(rowButtons);
+    }
+  } else if (Array.isArray(rec?.buttons) && rec.buttons.length > 0) {
+    for (const btn of rec.buttons) {
+      keyboard.push([
+        {
+          text: btn.text || `Tombol ${btn.index}`,
+          callback_data: `rec_c:${btn.row}_${btn.column}`
+        }
+      ]);
+    }
   }
 
+  // Tombol kontrol selalu di baris paling bawah
   keyboard.push([
     { text: "⏹️ Simpan Alur", callback_data: "bridge_record_finish" },
     { text: "❌ Batalkan", callback_data: "bridge_record_cancel" }
@@ -2110,22 +2132,42 @@ async function handleCallbackQuery(callbackQuery) {
     return;
   }
 
-  if (data.startsWith("rec_click:")) {
-    const idx = parseInt(data.replace("rec_click:", ""), 10);
+  if (data.startsWith("rec_c:") || data.startsWith("rec_click:")) {
     const wizard = await getAdminWizard(from.id);
     if (!wizard || wizard.action !== "record_bridge_flow") {
       await sendMessage(chatId, "⚠️ Sesi rekam sudah selesai atau tidak aktif.");
       return;
     }
+
+    let row = undefined;
+    let col = undefined;
+    let index = undefined;
+
+    if (data.startsWith("rec_c:")) {
+      const parts = data.replace("rec_c:", "").split("_").map(Number);
+      row = parts[0];
+      col = parts[1];
+    } else {
+      index = parseInt(data.replace("rec_click:", ""), 10);
+    }
+
     try {
-      await sendMessage(chatId, `⏳ Mengklik tombol nomor ${idx}...`);
       const snapshot = await clickWorkflowRecordingButton({
         ownerId: from.id,
-        index: idx,
+        index,
+        row,
+        col,
         sessionString: wizard.sessionString
       });
       const snapshotText = renderFlowSnapshot(snapshot);
       const keyboard = buildRecordingKeyboard(snapshot);
+
+      if (messageId) {
+        try {
+          await editMessage(chatId, messageId, snapshotText, { reply_markup: { inline_keyboard: keyboard } });
+          return;
+        } catch {}
+      }
       await sendMessage(chatId, snapshotText, { reply_markup: { inline_keyboard: keyboard } });
     } catch (err) {
       await sendMessage(chatId, `❌ Gagal klik tombol: <code>${esc(err.message)}</code>`);
