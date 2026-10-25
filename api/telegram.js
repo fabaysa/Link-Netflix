@@ -56,21 +56,12 @@ import {
   renderFlowSnapshot
 } from "../lib/workflow-recorder.js";
 
+import {
+  COUNTRY_NAMES
+} from "../lib/country-button-finder.js";
+
 const BOT_NAME = "iLink Netflix Bot";
 const BOT_VERSION = "5.3";
-
-const COUNTRY_NAMES = {
-  ID: "Indonesia 🇮🇩",
-  MY: "Malaysia 🇲🇾",
-  SG: "Singapura 🇸🇬",
-  US: "Amerika Serikat 🇺🇸",
-  UK: "Inggris 🇬🇧",
-  TH: "Thailand 🇹🇭",
-  VN: "Vietnam 🇻🇳",
-  PH: "Filipina 🇵🇭",
-  JP: "Jepang 🇯🇵",
-  KR: "Korea Selatan 🇰🇷"
-};
 
 function esc(value = "") {
   return String(value)
@@ -229,17 +220,20 @@ async function renderBridgeMenu(chatId, messageId = null) {
   const keyboard = [
     [
       { text: "🤖 Kelola Bot Target", callback_data: "admin_target_bots" },
-      { text: "➕ Tambah Akun Bridge", callback_data: "bridge_add_account" }
+      { text: "🌏 Prioritas Negara", callback_data: "admin_country_priority" }
     ],
     [
       { text: "🎥 Rekam Alur", callback_data: "bridge_record_start" },
       { text: "📋 Lihat Alur", callback_data: "bridge_workflow_view" }
     ],
     [
-      { text: "🗑️ Hapus Akun Bridge", callback_data: "bridge_del_account" },
-      { text: "🔄 Refresh Status", callback_data: "admin_bridge" }
+      { text: "➕ Tambah Akun Bridge", callback_data: "bridge_add_account" },
+      { text: "🗑️ Hapus Akun Bridge", callback_data: "bridge_del_account" }
     ],
-    [{ text: "🔙 Kembali", callback_data: "admin_back" }]
+    [
+      { text: "🔄 Refresh Status", callback_data: "admin_bridge" },
+      { text: "🔙 Kembali", callback_data: "admin_back" }
+    ]
   ];
 
   if (messageId) {
@@ -298,6 +292,54 @@ async function renderTargetBotsMenu(chatId, messageId = null) {
   await sendMessage(chatId, text, { reply_markup: { inline_keyboard: keyboard } });
 }
 
+async function renderCountryPriorityMenu(chatId, messageId = null) {
+  const current = await getSetting("country_priority", ["ID", "MY", "SG"]);
+  const listStr = current
+    .map((code, idx) => `  <b>${idx + 1}.</b> ${COUNTRY_NAMES[code] || code} (<code>${code}</code>)`)
+    .join("\n");
+
+  const text = [
+    "🌏 <b>Pengaturan Urutan Prioritas Negara</b>",
+    "",
+    "<b>Urutan Prioritas Saat Ini:</b>",
+    listStr,
+    "",
+    "━━━━━━━━━━━━━━━━━━",
+    "<b>Sistem Smart Fallback Netflix:</b>",
+    "1️⃣ Bot selalu mencari <b>Prioritas 1</b> terlebih dahulu di semua halaman bot target.",
+    "2️⃣ Jika stok Prioritas 1 habis (0) atau tidak ditemukan, bot otomatis berpindah ke <b>Prioritas 2</b>.",
+    "3️⃣ Jika Prioritas 2 juga habis, otomatis lanjut ke <b>Prioritas 3</b>, dan seterusnya.",
+    "━━━━━━━━━━━━━━━━━━",
+    "",
+    "Pilih preset cepat di bawah atau gunakan tombol <b>✏️ Ketik Manual</b>:"
+  ].join("\n");
+
+  const keyboard = [
+    [
+      { text: "🇮🇩 ID ➔ 🇲🇾 MY ➔ 🇸🇬 SG", callback_data: "preset_country:ID,MY,SG" },
+      { text: "🇲🇾 MY ➔ 🇮🇩 ID ➔ 🇸🇬 SG", callback_data: "preset_country:MY,ID,SG" }
+    ],
+    [
+      { text: "🇸🇬 SG ➔ 🇮🇩 ID ➔ 🇲🇾 MY", callback_data: "preset_country:SG,ID,MY" },
+      { text: "🌏 ID ➔ MY ➔ SG ➔ TH", callback_data: "preset_country:ID,MY,SG,TH" }
+    ],
+    [
+      { text: "✏️ Ketik Manual (Kustom)", callback_data: "input_country_priority" }
+    ],
+    [
+      { text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }
+    ]
+  ];
+
+  if (messageId) {
+    try {
+      await editMessage(chatId, messageId, text, { reply_markup: { inline_keyboard: keyboard } });
+      return;
+    } catch {}
+  }
+  await sendMessage(chatId, text, { reply_markup: { inline_keyboard: keyboard } });
+}
+
 async function renderTargetBotDetail(chatId, messageId, botId) {
   const bot = await getTargetBot(botId);
   if (!bot) {
@@ -334,7 +376,10 @@ async function renderTargetBotDetail(chatId, messageId, botId) {
       { text: "📋 Lihat Alur Bot Ini", callback_data: `bot_wf_view:${bot.id}` }
     ],
     [
-      { text: "🗑️ Hapus Bot", callback_data: `bot_del:${bot.id}` },
+      { text: "🌏 Prioritas Negara", callback_data: "admin_country_priority" },
+      { text: "🗑️ Hapus Bot", callback_data: `bot_del:${bot.id}` }
+    ],
+    [
       { text: "🔙 Kembali ke Daftar Bot", callback_data: "admin_target_bots" }
     ]
   ];
@@ -359,10 +404,10 @@ async function renderWorkflowMenu(chatId, messageId = null) {
   const text = [
     "🌏 <b>Negara & Foto Working</b>",
     "",
-    "<b>Prioritas negara:</b>",
+    "<b>Prioritas negara saat ini:</b>",
     countriesStr,
     "",
-    "Atur melalui perintah:",
+    "Atur urutan prioritas (1 ➔ 2 ➔ 3 dst) dengan tombol di bawah atau perintah:",
     "<code>/setnegara ID,MY,SG</code>",
     "",
     `📸 <b>Foto tersimpan:</b> <b>${photos.length}</b> (tiap hasil Working mengirim tepat satu foto bergiliran)`,
@@ -371,6 +416,9 @@ async function renderWorkflowMenu(chatId, messageId = null) {
   ].join("\n");
 
   const keyboard = [
+    [
+      { text: "🌏 Atur Prioritas Negara", callback_data: "admin_country_priority" }
+    ],
     [
       { text: "📸 Tambah Foto", callback_data: "workflow_add_photo" },
       { text: "🖼️ Daftar Foto", callback_data: "workflow_show_photos" }
@@ -1035,6 +1083,49 @@ async function handleAdminTextWizard(chatId, from, text) {
     return true;
   }
 
+  // Wizard: Set Prioritas Negara
+  if (wizard.action === "set_country_priority") {
+    const list = [...new Set(
+      text
+        .split(/[,;\s]+/)
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean)
+    )];
+
+    if (!list.length) {
+      await sendMessage(chatId, "❌ Masukkan minimal 1 kode negara (contoh: <code>ID, MY, SG</code>).");
+      return true;
+    }
+
+    await setSetting("country_priority", list);
+    await clearAdminWizard(userId);
+
+    const formattedList = list
+      .map((code, idx) => `  <b>${idx + 1}.</b> ${COUNTRY_NAMES[code] || code} (<code>${code}</code>)`)
+      .join("\n");
+
+    await sendMessage(
+      chatId,
+      [
+        "✅ <b>Urutan Prioritas Negara Berhasil Disimpan!</b>",
+        "",
+        "<b>Daftar Prioritas Baru:</b>",
+        formattedList,
+        "",
+        "<i>Sistem bridge akan selalu mencari Prioritas 1 terlebih dahulu di semua halaman bot target. Jika stok kosong atau negara tersebut tidak ada, bot otomatis berpindah ke Prioritas 2, lalu Prioritas 3, dst.</i>"
+      ].join("\n"),
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🌏 Atur Prioritas Lagi", callback_data: "admin_country_priority" }],
+            [{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]
+          ]
+        }
+      }
+    );
+    return true;
+  }
+
   // 3. Wizard: Tambah Akun Bridge (Nomor HP)
   if (wizard.action === "add_bridge_phone") {
     const phone = text.trim();
@@ -1484,11 +1575,31 @@ async function handleMessage(message) {
       return;
     }
 
-    if (/^\/setnegara\s+(.+)$/i.test(rawText)) {
-      const match = rawText.match(/^\/setnegara\s+(.+)$/i);
-      const list = match[1].split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
-      await setSetting("country_priority", list);
-      await sendMessage(chatId, `✅ Prioritas negara disimpan:\n${list.map((c, i) => `${i + 1}. ${COUNTRY_NAMES[c] || c}`).join("\n")}`);
+    if (/^\/setnegara(?:\s+(.+))?$/i.test(rawText)) {
+      const match = rawText.match(/^\/setnegara(?:\s+(.+))?$/i);
+      const arg = match?.[1]?.trim();
+      if (!arg) {
+        return renderCountryPriorityMenu(chatId);
+      }
+      const list = [...new Set(arg.split(/[,;\s]+/).map((s) => s.trim().toUpperCase()).filter(Boolean))];
+      if (list.length > 0) {
+        await setSetting("country_priority", list);
+        const listStr = list.map((c, i) => `  <b>${i + 1}.</b> ${COUNTRY_NAMES[c] || c} (<code>${c}</code>)`).join("\n");
+        await sendMessage(
+          chatId,
+          `✅ <b>Prioritas negara berhasil disimpan:</b>\n\n${listStr}\n\n<i>Bot akan mencari Prioritas 1 terlebih dahulu di semua halaman bot target. Jika stok habis atau tidak ada, otomatis pindah ke Prioritas 2, 3, dst.</i>`,
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🌏 Atur Prioritas Lagi", callback_data: "admin_country_priority" }],
+                [{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]
+              ]
+            }
+          }
+        );
+      } else {
+        await sendMessage(chatId, "❌ Format salah. Contoh: <code>/setnegara ID,MY,SG</code>");
+      }
       return;
     }
 
@@ -1689,6 +1800,37 @@ async function handleCallbackQuery(callbackQuery) {
   if (data === "admin_stats") return renderStatsMenu(chatId, messageId);
   if (data === "admin_broadcast") return renderBroadcastMenu(chatId, messageId);
   if (data === "admin_settings") return renderSettingsMenu(chatId, messageId);
+
+  // Country Priority Sub-actions
+  if (data === "admin_country_priority") {
+    return renderCountryPriorityMenu(chatId, messageId);
+  }
+
+  if (data === "input_country_priority") {
+    await setAdminWizard(from.id, { action: "set_country_priority" });
+    await sendMessage(
+      chatId,
+      [
+        "✏️ <b>Ketik Urutan Prioritas Negara</b>",
+        "",
+        "Kirimkan kode negara berurutan dipisahkan koma.",
+        "Contoh: <code>ID, MY, SG, TH, VN</code>",
+        "",
+        "• Negara pertama = <b>Prioritas 1</b> (dicari pertama kali di semua halaman)",
+        "• Negara kedua = <b>Prioritas 2</b> (cadangan jika Prioritas 1 kosong)",
+        "• Negara ketiga = <b>Prioritas 3</b> (cadangan berikutnya), dst.",
+        "",
+        "Ketik /batal untuk membatalkan."
+      ].join("\n")
+    );
+    return;
+  }
+
+  if (data.startsWith("preset_country:")) {
+    const preset = data.replace("preset_country:", "").split(",");
+    await setSetting("country_priority", preset);
+    return renderCountryPriorityMenu(chatId, messageId);
+  }
 
   // Bridge Sub-actions
   if (data === "bridge_set_username") {
