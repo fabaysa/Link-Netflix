@@ -88,17 +88,31 @@ alter table if exists public.gemini_checker_users
   add column if not exists warranty_last_claim_date date default current_date,
   add column if not exists is_banned boolean not null default false;
 
--- 5. Nonaktifkan RLS agar bot serverless tidak terhalang permission
+-- 5. Tabel Login Sesi Telegram Userbot
+create table if not exists public.gemini_checker_login_sessions (
+  id uuid primary key,
+  phone text not null,
+  temp_session text not null,
+  phone_code_hash text not null,
+  is_code_via_app boolean not null default false,
+  needs_2fa boolean not null default false,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+
+-- 6. Nonaktifkan RLS agar bot serverless tidak terhalang permission
 alter table if exists public.packages disable row level security;
 alter table if exists public.vouchers disable row level security;
 alter table if exists public.bot_settings disable row level security;
+alter table if exists public.gemini_checker_login_sessions disable row level security;
 
--- 6. Beri hak akses ke semua role (postgres, anon, authenticated, service_role)
+-- 7. Beri hak akses ke semua role (postgres, anon, authenticated, service_role)
 grant usage on schema public to postgres, anon, authenticated, service_role;
 grant all on table public.bot_settings to postgres, anon, authenticated, service_role;
 grant all on table public.packages to postgres, anon, authenticated, service_role;
 grant all on table public.vouchers to postgres, anon, authenticated, service_role;
 grant all on table public.gemini_checker_users to postgres, anon, authenticated, service_role;
+grant all on table public.gemini_checker_login_sessions to postgres, anon, authenticated, service_role;
 
--- 7. Muat ulang Schema Cache PostgREST
+-- 8. Muat ulang Schema Cache PostgREST
 NOTIFY pgrst, 'reload schema';
