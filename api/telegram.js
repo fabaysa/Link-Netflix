@@ -30,13 +30,23 @@ import {
   setAdminWizard,
   clearAdminWizard,
   grantUserWarranty,
-  getAllUserIds
+  getAllUserIds,
+  getRecordedWorkflow,
+  deleteRecordedWorkflow
 } from "../lib/store.js";
 import {
   startTelegramLogin,
   submitTelegramCode,
   submitTelegram2FA
 } from "../lib/telegram-login-helper.js";
+import {
+  startWorkflowRecording,
+  sendWorkflowRecordingText,
+  clickWorkflowRecordingButton,
+  finishWorkflowRecording,
+  cancelWorkflowRecording,
+  renderFlowSnapshot
+} from "../lib/workflow-recorder.js";
 
 const BOT_NAME = "iLink Netflix Bot";
 const BOT_VERSION = "5.3";
@@ -171,6 +181,7 @@ async function renderAdminDashboard(chatId, messageId = null) {
 async function renderBridgeMenu(chatId, messageId = null) {
   const accounts = await getBridgeAccounts();
   const targetBot = await getSetting("target_bot", "SSNetflixBot");
+  const recorded = await getRecordedWorkflow();
 
   const accountLines = accounts.length
     ? accounts
@@ -181,22 +192,31 @@ async function renderBridgeMenu(chatId, messageId = null) {
         .join("\n")
     : "Belum ada akun bridge.";
 
+  const profileStatus = recorded?.steps?.length
+    ? `✅ Alur terekam (<b>${recorded.steps.length} langkah</b> pada @${esc(recorded.targetBot)})`
+    : "⚠️ Menggunakan alur bawaan default (belum direkam kustom)";
+
   const text = [
     `🌉 <b>Telegram Bridge v${BOT_VERSION}</b>`,
     "",
-    `Target: <b>@${esc(targetBot)}</b>`,
-    `Akun terdaftar: <b>${accounts.length}</b>`,
+    `Target Bot Aktif: <b>@${esc(targetBot)}</b>`,
+    `Profil Alur: ${profileStatus}`,
+    `Akun Bridge Siap: <b>${accounts.filter((a) => a.enabled !== false).length}/${accounts.length}</b>`,
     "",
     "<b>Daftar Akun Bridge:</b>",
     accountLines,
     "",
-    "Anda dapat menambah akun langsung melalui tombol di bawah atau melalui website setup:"
+    "Gunakan tombol di bawah untuk merekam alur bot baru, mengelola bot target, atau menambah akun bridge:"
   ].join("\n");
 
   const keyboard = [
     [
       { text: "🤖 Set Bot Target", callback_data: "bridge_set_username" },
       { text: "➕ Tambah Akun", callback_data: "bridge_add_account" }
+    ],
+    [
+      { text: "🎥 Rekam Alur Umum", callback_data: "bridge_record_start" },
+      { text: "📋 Lihat Alur", callback_data: "bridge_workflow_view" }
     ],
     [
       { text: "🗑️ Hapus Akun", callback_data: "bridge_del_account" },
@@ -697,6 +717,59 @@ async function handleHelp(chatId) {
   });
 }
 
+function buildRecordingKeyboard(rec) {
+  const keyboard = [];
+  const btns = rec?.buttons || [];
+
+  for (let i = 0; i < btns.length && i < 16; i += 4) {
+    const chunk = btns.slice(i, i + 4).map((b) => ({
+      text: `🔘 ${b.index}`,
+      callback_data: `rec_click:${b.index}`
+    }));
+    keyboard.push(chunk);
+  }
+
+  keyboard.push([
+    { text: "⏹️ Simpan Alur", callback_data: "bridge_record_finish" },
+    { text: "❌ Batalkan", callback_data: "bridge_record_cancel" }
+  ]);
+
+  return keyboard;
+}
+
+async function startRecordingSession(chatId, userId, targetBot, sessionString) {
+  await sendMessage(
+    chatId,
+    `⏳ Menghubungkan ke userbot dan mengirimkan <code>/start</code> ke <b>@${esc(targetBot)}</b>...`
+  );
+
+  try {
+    const snapshot = await startWorkflowRecording({
+      ownerId: userId,
+      targetBot,
+      sessionString
+    });
+
+    await setAdminWizard(userId, {
+      action: "record_bridge_flow",
+      targetBot,
+      sessionString
+    });
+
+    const snapshotText = renderFlowSnapshot(snapshot);
+    const keyboard = buildRecordingKeyboard(snapshot);
+
+    await sendMessage(chatId, snapshotText, {
+      reply_markup: { inline_keyboard: keyboard }
+    });
+  } catch (err) {
+    await clearAdminWizard(userId);
+    await sendMessage(chatId, `❌ Gagal memulai rekam alur: <code>${esc(err.message)}</code>`, {
+      reply_markup: { inline_keyboard: [[{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]] }
+    });
+  }
+}
+
 // ─── ADMIN TEXT WIZARD HANDLER ────────────────────────────────────────────────
 
 async function handleAdminTextWizard(chatId, from, text) {
@@ -706,10 +779,101 @@ async function handleAdminTextWizard(chatId, from, text) {
 
   // 1. Wizard: Batal
   if (text === "/batal") {
+    if (wizard.action === "record_bridge_flow") {
+      await cancelWorkflowRecording(userId);
+    }
     await clearAdminWizard(userId);
     await sendMessage(chatId, "❌ Proses admin dibatalkan.", {
       reply_markup: { inline_keyboard: [[{ text: "🔙 Kembali ke Admin", callback_data: "admin_back" }]] }
     });
+    return true;
+  }
+
+  // Wizard: Masukkan bot target baru untuk rekam alur
+  if (wizard.action === "record_target_username") {
+    const target = text.replace(/^@/, "").trim();
+    if (!/^[A-Za-z0-9_]{4,32}$/.test(target)) {
+      await sendMessage(chatId, "❌ Username bot tidak valid. Masukkan username (misal: <code>SSNetflixBot</code>).");
+      return true;
+    }
+    const accounts = await getBridgeAccounts();
+    const activeAcc = accounts.find((a) => a.enabled !== false && a.sessionString);
+    if (!activeAcc) {
+      await clearAdminWizard(userId);
+      await sendMessage(chatId, "❌ Belum ada akun bridge aktif. Tambahkan akun bridge terlebih dahulu di menu Bridge.");
+      return true;
+    }
+    await startRecordingSession(chatId, userId, target, activeAcc.sessionString);
+    return true;
+  }
+
+  // Wizard: Interaktif rekam alur bridge
+  if (wizard.action === "record_bridge_flow") {
+    if (text === "/rekam_selesai") {
+      try {
+        const wf = await finishWorkflowRecording(userId);
+        await clearAdminWizard(userId);
+        await sendMessage(
+          chatId,
+          `✅ <b>Alur berhasil disimpan!</b>\n\n🎯 Target: <b>@${esc(wf.targetBot)}</b>\n📊 Jumlah langkah: <b>${wf.steps.length}</b>\n\nWorker bridge akan otomatis mereplay alur ini saat memproses request cookies.`,
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "📋 Lihat Detail Alur", callback_data: "bridge_workflow_view" }],
+                [{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]
+              ]
+            }
+          }
+        );
+      } catch (err) {
+        await sendMessage(chatId, `❌ Gagal menyimpan alur: <code>${esc(err.message)}</code>`);
+      }
+      return true;
+    }
+
+    const clickMatch = text.match(/^\/rekam_klik\s+(\d+)$/i);
+    if (clickMatch) {
+      const idx = parseInt(clickMatch[1], 10);
+      try {
+        await sendMessage(chatId, `⏳ Mengklik tombol nomor ${idx}...`);
+        const snapshot = await clickWorkflowRecordingButton({
+          ownerId: userId,
+          index: idx,
+          sessionString: wizard.sessionString
+        });
+        const snapshotText = renderFlowSnapshot(snapshot);
+        const keyboard = buildRecordingKeyboard(snapshot);
+        await sendMessage(chatId, snapshotText, { reply_markup: { inline_keyboard: keyboard } });
+      } catch (err) {
+        await sendMessage(chatId, `❌ Gagal klik tombol: <code>${esc(err.message)}</code>`);
+      }
+      return true;
+    }
+
+    const forwardMatch = text.match(/^\/rekam_kirim\s+([\s\S]+)$/i);
+    const textToSend = forwardMatch ? forwardMatch[1].trim() : text;
+
+    if (text.startsWith("/") && !forwardMatch && text !== "/batal") {
+      await sendMessage(
+        chatId,
+        "Untuk mengirim perintah bot ke target (misal /start), gunakan:\n<code>/rekam_kirim /perintah</code>"
+      );
+      return true;
+    }
+
+    try {
+      await sendMessage(chatId, `⏳ Mengirim pesan ke @${esc(wizard.targetBot)}...`);
+      const snapshot = await sendWorkflowRecordingText({
+        ownerId: userId,
+        text: textToSend,
+        sessionString: wizard.sessionString
+      });
+      const snapshotText = renderFlowSnapshot(snapshot);
+      const keyboard = buildRecordingKeyboard(snapshot);
+      await sendMessage(chatId, snapshotText, { reply_markup: { inline_keyboard: keyboard } });
+    } catch (err) {
+      await sendMessage(chatId, `❌ Gagal kirim teks: <code>${esc(err.message)}</code>`);
+    }
     return true;
   }
 
@@ -1207,6 +1371,69 @@ async function handleMessage(message) {
       await sendMessage(chatId, `✅ Broadcast berhasil dikirim ke <b>${sent}</b> pengguna.`);
       return;
     }
+
+    if (/^\/rekam(?:@\w+)?$/i.test(rawText)) {
+      const accounts = await getBridgeAccounts();
+      const activeAcc = accounts.find((a) => a.enabled !== false && a.sessionString);
+      if (!activeAcc) {
+        await sendMessage(
+          chatId,
+          "❌ <b>Belum ada akun bridge aktif.</b>\n\nTambahkan akun bridge di menu /admin → Telegram Bridge terlebih dahulu."
+        );
+        return;
+      }
+      const currentTarget = await getSetting("target_bot", "SSNetflixBot");
+      await sendMessage(
+        chatId,
+        `🎥 <b>Rekam Alur Bridge Baru</b>\n\nTarget bot saat ini: <b>@${esc(currentTarget)}</b>\n\nPilih bot target yang ingin direkam:`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: `🤖 Gunakan Bot Saat Ini (@${esc(currentTarget)})`, callback_data: "rec_target:current" }],
+              [{ text: "➕ Masukkan Bot Tujuan Baru", callback_data: "rec_target:new" }],
+              [{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]
+            ]
+          }
+        }
+      );
+      return;
+    }
+
+    if (/^\/alur(?:@\w+)?$/i.test(rawText)) {
+      const recorded = await getRecordedWorkflow();
+      const targetBot = await getSetting("target_bot", "SSNetflixBot");
+      if (!recorded || !recorded.steps?.length) {
+        await sendMessage(
+          chatId,
+          `📋 <b>Status Alur Bridge: Default</b>\n\nSaat ini belum ada alur kustom yang direkam.\nBot menggunakan alur bawaan default ke <b>@${esc(targetBot)}</b>.`,
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🎥 Rekam Alur Baru", callback_data: "bridge_record_start" }],
+                [{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]
+              ]
+            }
+          }
+        );
+        return;
+      }
+      const stepList = recorded.steps
+        .map((s, i) => `${i + 1}. ${s.type === "send_text" ? `✉️ Kirim: <code>${esc(s.text)}</code>` : `🔘 Klik: <b>${esc(s.buttonText)}</b>`}`)
+        .join("\n");
+      await sendMessage(
+        chatId,
+        `📋 <b>Alur Terekam — @${esc(recorded.targetBot)}</b> (${recorded.steps.length} langkah):\n\n${stepList}`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🎥 Rekam Ulang", callback_data: "bridge_record_start" }],
+              [{ text: "🗑️ Hapus Alur", callback_data: "bridge_workflow_delete" }]
+            ]
+          }
+        }
+      );
+      return;
+    }
   }
 
   // Treat any other raw text as cookies or custom input
@@ -1322,6 +1549,188 @@ async function handleCallbackQuery(callbackQuery) {
     await editMessage(chatId, messageId, "✅ Akun bridge berhasil dihapus.", {
       reply_markup: { inline_keyboard: [[{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]] }
     });
+    return;
+  }
+
+  // Bridge Recording Sub-actions
+  if (data === "bridge_record_start") {
+    const accounts = await getBridgeAccounts();
+    const activeAcc = accounts.find((a) => a.enabled !== false && a.sessionString);
+    if (!activeAcc) {
+      await sendMessage(
+        chatId,
+        "❌ <b>Belum ada akun bridge aktif.</b>\n\nUntuk merekam alur bot, Anda harus menambahkan minimal 1 akun Telegram bridge terlebih dahulu di menu Telegram Bridge.",
+        { reply_markup: { inline_keyboard: [[{ text: "➕ Tambah Akun Bridge", callback_data: "bridge_add_account" }], [{ text: "🔙 Kembali", callback_data: "admin_bridge" }]] } }
+      );
+      return;
+    }
+
+    const currentTarget = await getSetting("target_bot", "SSNetflixBot");
+    const text = [
+      "🎥 <b>Rekam Alur Interaktif Bot Bridge</b>",
+      "",
+      `Target bot saat ini: <b>@${esc(currentTarget)}</b>`,
+      "",
+      "Pilih bot tujuan yang ingin direkam:",
+      "• <b>Gunakan Bot Saat Ini:</b> untuk update/rekam alur bot saat ini",
+      "• <b>Bot Tujuan Baru:</b> jika ingin beralih ke bot generator baru"
+    ].join("\n");
+
+    await editMessage(chatId, messageId, text, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: `🤖 Gunakan Bot Saat Ini (@${esc(currentTarget)})`, callback_data: "rec_target:current" }],
+          [{ text: "➕ Masukkan Bot Tujuan Baru", callback_data: "rec_target:new" }],
+          [{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]
+        ]
+      }
+    });
+    return;
+  }
+
+  if (data === "rec_target:current") {
+    const accounts = await getBridgeAccounts();
+    const activeAcc = accounts.find((a) => a.enabled !== false && a.sessionString);
+    if (!activeAcc) {
+      await sendMessage(chatId, "❌ Belum ada akun bridge aktif.");
+      return;
+    }
+    const targetBot = await getSetting("target_bot", "SSNetflixBot");
+    await startRecordingSession(chatId, from.id, targetBot, activeAcc.sessionString);
+    return;
+  }
+
+  if (data === "rec_target:new") {
+    await setAdminWizard(from.id, { action: "record_target_username" });
+    await sendMessage(
+      chatId,
+      "🤖 Masukkan <b>username bot tujuan baru</b> yang ingin direkam (contoh: <code>SSNetflixBot</code>):\n\n/batal untuk membatalkan."
+    );
+    return;
+  }
+
+  if (data === "bridge_record_finish") {
+    try {
+      const wf = await finishWorkflowRecording(from.id);
+      await clearAdminWizard(from.id);
+      await sendMessage(
+        chatId,
+        `✅ <b>Alur berhasil disimpan!</b>\n\n🎯 Target: <b>@${esc(wf.targetBot)}</b>\n📊 Jumlah langkah: <b>${wf.steps.length}</b>\n\nWorker bridge akan otomatis mereplay alur ini saat memproses request cookies.`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "📋 Lihat Detail Alur", callback_data: "bridge_workflow_view" }],
+              [{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]
+            ]
+          }
+        }
+      );
+    } catch (err) {
+      await sendMessage(chatId, `❌ Gagal menyimpan alur: <code>${esc(err.message)}</code>`);
+    }
+    return;
+  }
+
+  if (data === "bridge_record_cancel") {
+    await cancelWorkflowRecording(from.id);
+    await clearAdminWizard(from.id);
+    await sendMessage(chatId, "🛑 <b>Rekaman alur bridge dibatalkan.</b>", {
+      reply_markup: { inline_keyboard: [[{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]] }
+    });
+    return;
+  }
+
+  if (data.startsWith("rec_click:")) {
+    const idx = parseInt(data.replace("rec_click:", ""), 10);
+    const wizard = await getAdminWizard(from.id);
+    if (!wizard || wizard.action !== "record_bridge_flow") {
+      await sendMessage(chatId, "⚠️ Sesi rekam sudah selesai atau tidak aktif.");
+      return;
+    }
+    try {
+      await sendMessage(chatId, `⏳ Mengklik tombol nomor ${idx}...`);
+      const snapshot = await clickWorkflowRecordingButton({
+        ownerId: from.id,
+        index: idx,
+        sessionString: wizard.sessionString
+      });
+      const snapshotText = renderFlowSnapshot(snapshot);
+      const keyboard = buildRecordingKeyboard(snapshot);
+      await sendMessage(chatId, snapshotText, { reply_markup: { inline_keyboard: keyboard } });
+    } catch (err) {
+      await sendMessage(chatId, `❌ Gagal klik tombol: <code>${esc(err.message)}</code>`);
+    }
+    return;
+  }
+
+  if (data === "bridge_workflow_view") {
+    const recorded = await getRecordedWorkflow();
+    const targetBot = await getSetting("target_bot", "SSNetflixBot");
+    if (!recorded || !recorded.steps?.length) {
+      await editMessage(
+        chatId,
+        messageId,
+        `📋 <b>Status Alur Bridge: Default</b>\n\nSaat ini belum ada alur kustom yang direkam.\nBot menggunakan alur bawaan default ke <b>@${esc(targetBot)}</b> (/start → Bypass Channel Gate → Generate Now → Country Priority).`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🎥 Rekam Alur Baru", callback_data: "bridge_record_start" }],
+              [{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]
+            ]
+          }
+        }
+      );
+      return;
+    }
+
+    const stepList = recorded.steps
+      .map((s, i) => {
+        if (s.type === "send_text") {
+          return `${i + 1}. ✉️ Kirim: <code>${esc(s.text)}</code>`;
+        }
+        if (s.type === "click_button") {
+          return `${i + 1}. 🔘 Klik: <b>${esc(s.buttonText)}</b> (baris ${s.row}, kolom ${s.col})`;
+        }
+        return `${i + 1}. Langkah: ${esc(JSON.stringify(s))}`;
+      })
+      .join("\n");
+
+    const text = [
+      `📋 <b>Alur Terekam — @${esc(recorded.targetBot)}</b>`,
+      "",
+      `Total langkah: <b>${recorded.steps.length}</b>`,
+      `Direkam pada: ${fmtDateTime(recorded.recordedAt)}`,
+      "",
+      "<b>Daftar Langkah:</b>",
+      stepList,
+      "",
+      "Alur di atas akan di-replay oleh worker sebelum mencocokkan negara."
+    ].join("\n");
+
+    await editMessage(chatId, messageId, text, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🎥 Rekam Ulang", callback_data: "bridge_record_start" }],
+          [{ text: "🗑️ Hapus & Reset Default", callback_data: "bridge_workflow_delete" }],
+          [{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]
+        ]
+      }
+    });
+    return;
+  }
+
+  if (data === "bridge_workflow_delete") {
+    await deleteRecordedWorkflow();
+    await editMessage(
+      chatId,
+      messageId,
+      "✅ <b>Alur kustom berhasil dihapus.</b>\n\nBot kembali menggunakan alur bawaan default.",
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]]
+        }
+      }
+    );
     return;
   }
 
