@@ -11,7 +11,9 @@ import {
   consumeClaimQuota,
   getBridgeAccounts,
   getSetting,
-  getActiveTargetBots
+  getActiveTargetBots,
+  isAdmin,
+  checkUserWarranty
 } from "../lib/store.js";
 import {
   claimJob,
@@ -298,6 +300,20 @@ async function processOneJob(job) {
   let client;
 
   try {
+    if (job.telegram_user_id) {
+      const requireWarranty = await getSetting("require_warranty", true);
+      const isUserAdmin = isAdmin(job.telegram_user_id);
+      if (!isUserAdmin && requireWarranty) {
+        const warranty = await checkUserWarranty(job.telegram_user_id);
+        if (!warranty.hasActiveWarranty) {
+          throw new Error("Akses dibatasi: Status akun Anda belum berlisensi VIP aktif.");
+        }
+        if (warranty.remainingToday <= 0) {
+          throw new Error(`Akses dibatasi: Batas kuota harian (${warranty.dailyLimit}x) Anda telah habis.`);
+        }
+      }
+    }
+
     const bridgeAccounts = await getBridgeAccounts();
     const enabledAccounts = bridgeAccounts.filter(a => a.enabled !== false && a.sessionString);
     let sessionToUse = "";

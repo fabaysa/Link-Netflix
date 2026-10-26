@@ -15,7 +15,7 @@ values
   ('country_priority', '["ID", "MY", "SG"]'::jsonb),
   ('target_bot', '"SSNetflixBot"'::jsonb),
   ('support_username', '"iLinkinStore"'::jsonb),
-  ('require_warranty', 'false'::jsonb),
+  ('require_warranty', 'true'::jsonb),
   ('daily_limit_default', '5'::jsonb),
   ('workflow_photos', '[]'::jsonb)
 on conflict (key) do nothing;

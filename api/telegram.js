@@ -588,16 +588,21 @@ async function renderSettingsMenu(chatId, messageId = null) {
 async function sendStartMenu(chatId, from) {
   const firstName = esc(from?.first_name || "User");
   const warranty = await checkUserWarranty(from?.id);
+  const isAdminUser = isAdmin(from?.id);
 
-  let statusText = "❌ <b>Tidak Ada / Kedaluwarsa</b>";
-  let quotaText = `📊 Kuota Hari Ini: <b>${warranty.remainingToday} / ${warranty.dailyLimit}</b>`;
+  let statusText = "❌ <b>Belum Berlisensi VIP (Tidak Aktif)</b>";
+  let quotaText = "📊 Kuota Hari Ini: <b>0 / 0</b> <i>(Belum Berlisensi VIP)</i>";
 
-  if (warranty.hasActiveWarranty) {
+  if (isAdminUser) {
+    statusText = "👑 <b>Administrator (Akses Penuh ♾️)</b>";
+    quotaText = "📊 Kuota Hari Ini: <b>Unlimited (Admin)</b>";
+  } else if (warranty.hasActiveWarranty) {
     if (warranty.isLifetime) {
-      statusText = `✅ <b>Aktif: ${esc(warranty.packageName || "Lifetime")}</b> (Selamanya ♾️)`;
+      statusText = `✅ <b>Aktif VIP: ${esc(warranty.packageName || "Lifetime")}</b> (Selamanya ♾️)`;
     } else {
-      statusText = `✅ <b>Aktif: ${esc(warranty.packageName || "Garansi")}</b> (s/d ${fmtDate(warranty.expiresAt)})`;
+      statusText = `✅ <b>Aktif VIP: ${esc(warranty.packageName || "Garansi")}</b> (s/d ${fmtDate(warranty.expiresAt)})`;
     }
+    quotaText = `📊 Kuota Hari Ini: <b>${warranty.remainingToday} / ${warranty.dailyLimit}</b>`;
   }
 
   const lines = [
@@ -606,7 +611,7 @@ async function sendStartMenu(chatId, from) {
     `Selamat datang di 🍿 <b>${BOT_NAME}</b>`,
     "",
     "━━━━━━━━━━━━━━━━━━",
-    `🛡️ <b>Status Garansi:</b> ${statusText}`,
+    `🛡️ <b>Status Lisensi:</b> ${statusText}`,
     quotaText,
     "━━━━━━━━━━━━━━━━━━",
     "",
@@ -615,25 +620,32 @@ async function sendStartMenu(chatId, from) {
     "• 📱 HP / Mobile (Android/iOS)",
     "• 📺 Smart TV",
     "",
-    "💡 <i>Gunakan menu di bawah atau kirim cookies Netflix Anda langsung.</i>",
+    "💡 <i>Gunakan menu di bawah atau tukarkan voucher untuk mulai.</i>",
     "",
     "⚡ <i>Powered by iLink.in Store</i>"
   ];
 
+  const inlineKeyboard = [];
+  if (isAdminUser || warranty.hasActiveWarranty) {
+    inlineKeyboard.push([{ text: "🍿 Ambil Token / Link", callback_data: "ambil" }]);
+  } else {
+    inlineKeyboard.push([{ text: "👑 Beli Lisensi VIP / Paket", callback_data: "paket" }]);
+    inlineKeyboard.push([{ text: "🍿 Ambil Token / Link", callback_data: "ambil" }]);
+  }
+
+  inlineKeyboard.push([
+    { text: "🔍 Cek Status Lisensi", callback_data: "cek" },
+    { text: "🎟️ Redeem Voucher", callback_data: "redeem_info" }
+  ]);
+  inlineKeyboard.push([
+    { text: "📦 Daftar Paket", callback_data: "paket" },
+    { text: "🌐 Akses Website", url: "https://link-netflix.vercel.app" }
+  ]);
+  inlineKeyboard.push([{ text: "📖 Panduan / Bantuan", callback_data: "bantuan" }]);
+
   await sendMessage(chatId, lines.join("\n"), {
     reply_markup: {
-      inline_keyboard: [
-        [{ text: "🍿 Ambil Token / Link", callback_data: "ambil" }],
-        [
-          { text: "🔍 Cek Garansi", callback_data: "cek" },
-          { text: "📦 Daftar Paket", callback_data: "paket" }
-        ],
-        [
-          { text: "🎟️ Redeem Voucher", callback_data: "redeem_info" },
-          { text: "🌐 Akses Website", url: "https://link-netflix.vercel.app" }
-        ],
-        [{ text: "📖 Panduan / Bantuan", callback_data: "bantuan" }]
-      ]
+      inline_keyboard: inlineKeyboard
     }
   });
 }
@@ -641,39 +653,49 @@ async function sendStartMenu(chatId, from) {
 async function handleCek(chatId, from) {
   const warranty = await checkUserWarranty(from?.id);
   const firstName = esc(from?.first_name || "User");
+  const isAdminUser = isAdmin(from?.id);
 
-  let statusBadge = "❌ Tidak Aktif / Belum Berlangganan";
+  let statusBadge = "❌ Belum Berlisensi VIP (Tidak Aktif)";
   let expiryStr = "-";
 
-  if (warranty.hasActiveWarranty) {
-    statusBadge = "✅ Aktif";
+  if (isAdminUser) {
+    statusBadge = "👑 Administrator (Akses Penuh)";
+    expiryStr = "Selamanya (Unlimited ♾️)";
+  } else if (warranty.hasActiveWarranty) {
+    statusBadge = `✅ Aktif VIP (${esc(warranty.packageName || "Garansi")})`;
     expiryStr = warranty.isLifetime ? "Selamanya (Lifetime ♾️)" : fmtDateTime(warranty.expiresAt);
   }
 
   const lines = [
-    "🔍 <b>Rincian Garansi & Akun Anda</b>",
+    "🔍 <b>Rincian Status Lisensi VIP & Akun Anda</b>",
     "",
     `👤 <b>Nama:</b> ${firstName}`,
     `🆔 <b>Telegram ID:</b> <code>${from?.id}</code>`,
     `⚡ <b>Status:</b> ${statusBadge}`,
-    `📦 <b>Paket:</b> ${esc(warranty.packageName || "-")}`,
+    `📦 <b>Paket:</b> ${esc(warranty.packageName || (isAdminUser ? "Admin VIP" : "-"))}`,
     `⏳ <b>Masa Berlaku:</b> ${expiryStr}`,
-    `📊 <b>Penggunaan Hari Ini:</b> ${warranty.claimsToday} dari ${warranty.dailyLimit} klaim`,
-    `🎯 <b>Sisa Kuota Hari Ini:</b> ${warranty.remainingToday} klaim`,
+    `📊 <b>Penggunaan Hari Ini:</b> ${warranty.claimsToday} dari ${isAdminUser ? "∞" : warranty.dailyLimit} klaim`,
+    `🎯 <b>Sisa Kuota Hari Ini:</b> ${isAdminUser ? "Unlimited" : (warranty.hasActiveWarranty ? `${warranty.remainingToday} klaim` : "0 klaim (Belum Berlisensi VIP)")}`,
     "",
     "⚡ <i>Powered by iLink.in Store</i>"
   ];
 
+  const inlineKeyboard = [];
+  if (isAdminUser || warranty.hasActiveWarranty) {
+    inlineKeyboard.push([{ text: "🍿 Ambil Token Sekarang", callback_data: "ambil" }]);
+  } else {
+    inlineKeyboard.push([{ text: "👑 Beli Lisensi VIP Sekarang", callback_data: "paket" }]);
+  }
+
+  inlineKeyboard.push([
+    { text: "📦 Daftar Paket", callback_data: "paket" },
+    { text: "🎟️ Redeem Voucher", callback_data: "redeem_info" }
+  ]);
+  inlineKeyboard.push([{ text: "🔙 Kembali ke Menu", callback_data: "start" }]);
+
   await sendMessage(chatId, lines.join("\n"), {
     reply_markup: {
-      inline_keyboard: [
-        [{ text: "🍿 Ambil Token Sekarang", callback_data: "ambil" }],
-        [
-          { text: "📦 Beli / Perpanjang", callback_data: "paket" },
-          { text: "🎟️ Redeem Voucher", callback_data: "redeem_info" }
-        ],
-        [{ text: "🔙 Kembali ke Menu", callback_data: "start" }]
-      ]
+      inline_keyboard: inlineKeyboard
     }
   });
 }
@@ -780,7 +802,8 @@ async function handleRedeemCommand(chatId, from, rawCode) {
 }
 
 async function handleAmbilToken(chatId, from) {
-  const requireWarranty = await getSetting("require_warranty", false);
+  const isAdminUser = isAdmin(from?.id);
+  const requireWarranty = await getSetting("require_warranty", true);
   const warranty = await checkUserWarranty(from?.id);
 
   if (warranty.isBanned) {
@@ -788,22 +811,24 @@ async function handleAmbilToken(chatId, from) {
     return;
   }
 
-  if (requireWarranty && !warranty.hasActiveWarranty) {
+  if (!isAdminUser && requireWarranty && !warranty.hasActiveWarranty) {
     await sendMessage(
       chatId,
       [
-        "⛔ <b>Akses Dibatasi</b>",
+        "👑 <b>Akses Dibatasi — Belum Berlisensi VIP</b>",
         "",
-        "Anda belum memiliki paket garansi aktif untuk mengambil link token Netflix.",
-        "Silakan beli paket atau tukarkan voucher garansi terlebih dahulu.",
+        "Status akun Anda saat ini <b>belum memiliki lisensi VIP aktif</b>.",
+        "Untuk dapat mengambil atau generate link Netflix, silakan beli paket lisensi atau tukarkan voucher terlebih dahulu.",
         "",
-        "Ketik /paket untuk melihat pilihan paket yang tersedia."
+        "Ketik /paket untuk melihat pilihan lisensi yang tersedia, atau ketik <code>/redeem KODE</code> untuk aktivasi."
       ].join("\n"),
       {
         reply_markup: {
           inline_keyboard: [
-            [{ text: "📦 Beli Paket Garansi", callback_data: "paket" }],
-            [{ text: "🎟️ Redeem Voucher", callback_data: "redeem_info" }]
+            [{ text: "👑 Beli Lisensi VIP", callback_data: "paket" }],
+            [{ text: "🎟️ Redeem Voucher", callback_data: "redeem_info" }],
+            [{ text: "🔍 Cek Status Akun", callback_data: "cek" }],
+            [{ text: "🔙 Menu Utama", callback_data: "start" }]
           ]
         }
       }
@@ -811,7 +836,7 @@ async function handleAmbilToken(chatId, from) {
     return;
   }
 
-  if (requireWarranty && warranty.remainingToday <= 0) {
+  if (!isAdminUser && requireWarranty && warranty.remainingToday <= 0) {
     await sendMessage(
       chatId,
       [
@@ -821,7 +846,15 @@ async function handleAmbilToken(chatId, from) {
         "Kuota akan direset kembali pada pukul 00:00 WIB.",
         "",
         "Silakan kembali besok atau hubungi admin jika butuh limit tambahan."
-      ].join("\n")
+      ].join("\n"),
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🔍 Cek Kuota", callback_data: "cek" }],
+            [{ text: "💬 Hubungi Bantuan", callback_data: "bantuan" }]
+          ]
+        }
+      }
     );
     return;
   }
@@ -1551,7 +1584,7 @@ async function handleMessage(message) {
     return;
   }
 
-  if (/^\/ambil(?:@\w+)?$/i.test(rawText)) {
+  if (/^\/(?:ambil|generate)(?:@\w+)?$/i.test(rawText)) {
     await handleAmbilToken(chatId, from);
     return;
   }
@@ -1753,13 +1786,42 @@ async function handleMessage(message) {
     return;
   }
 
+  const isAdminUser = isAdmin(from?.id);
   const warranty = await checkUserWarranty(from?.id);
-  const requireWarranty = await getSetting("require_warranty", false);
+  const requireWarranty = await getSetting("require_warranty", true);
 
-  if (requireWarranty && !warranty.hasActiveWarranty) {
+  if (!isAdminUser && requireWarranty && !warranty.hasActiveWarranty) {
     await sendMessage(
       chatId,
-      "⛔ Anda belum memiliki garansi aktif untuk memproses cookies. Ketik /paket untuk beli atau /redeem untuk aktivasi."
+      [
+        "👑 <b>Akses Dibatasi — Belum Berlisensi VIP</b>",
+        "",
+        "Status akun Anda saat ini <b>belum memiliki lisensi VIP aktif</b>.",
+        "Untuk dapat memproses cookies atau generate link Netflix, silakan beli paket lisensi atau tukarkan voucher terlebih dahulu.",
+        "",
+        "Ketik /paket untuk melihat pilihan paket lisensi atau <code>/redeem KODE</code> untuk aktivasi."
+      ].join("\n"),
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "👑 Beli Lisensi VIP", callback_data: "paket" }],
+            [{ text: "🎟️ Redeem Voucher", callback_data: "redeem_info" }]
+          ]
+        }
+      }
+    );
+    return;
+  }
+
+  if (!isAdminUser && requireWarranty && warranty.remainingToday <= 0) {
+    await sendMessage(
+      chatId,
+      [
+        "⚠️ <b>Batas Harian Tercapai</b>",
+        "",
+        `Kuota klaim harian Anda hari ini sudah habis (Maksimal <b>${warranty.dailyLimit}x</b> per hari).`,
+        "Kuota akan direset kembali pada pukul 00:00 WIB."
+      ].join("\n")
     );
     return;
   }
