@@ -126,11 +126,14 @@ function fmtDuration(durationDays, lifetime, durationHours = null) {
 
 async function renderAdminDashboard(chatId, messageId = null) {
   const stats = await getStats();
-  const targetBot = await getSetting("target_bot", "SSNetflixBot");
+  const loginBot = await getSetting("target_bot_login", await getSetting("target_bot", "SSNetflixBot"));
+  const cookieBot = await getSetting("target_bot_cookie", "cookiesnetflixskystorebot");
+  const loginBots = await getTargetBots("login");
+  const cookieBots = await getTargetBots("cookie");
   const countryPriority = await getSetting("country_priority", ["ID", "MY", "SG"]);
   const photos = await getWorkflowPhotos();
   const bridgeAccounts = await getBridgeAccounts();
-  const reqWarranty = await getSetting("require_warranty", false);
+  const reqWarranty = await getSetting("require_warranty", true);
 
   const countriesStr = countryPriority
     .map((c) => COUNTRY_NAMES[c] || c)
@@ -144,10 +147,12 @@ async function renderAdminDashboard(chatId, messageId = null) {
     `• Garansi aktif: <b>${stats.activeWarranties}</b>`,
     `• Total hasil terkirim: <b>${stats.totalUrlsFetched}</b>`,
     "",
-    `🌉 <b>Telegram bridge:</b> ${bridgeAccounts.length} akun terdaftar · @${targetBot}`,
+    `🎬 <b>Bot Ambil Link:</b> @${esc(loginBot)} (${loginBots.filter((b) => b.enabled).length}/${loginBots.length} aktif)`,
+    `🍪 <b>Bot Generate Cookies:</b> @${esc(cookieBot)} (${cookieBots.filter((b) => b.enabled).length}/${cookieBots.length} aktif)`,
+    `🌉 <b>Akun Bridge:</b> ${bridgeAccounts.filter((a) => a.enabled !== false).length}/${bridgeAccounts.length} akun siap`,
     `🌏 <b>Prioritas negara:</b> ${countriesStr}`,
     `📸 <b>Foto Working:</b> ${photos.length} foto`,
-    `🛡️ <b>Wajib Garansi:</b> ${reqWarranty ? "✅ Aktif" : "❌ Nonaktif"}`,
+    `🛡️ <b>Wajib Garansi / Lisensi:</b> ${reqWarranty ? "✅ Aktif (Wajib)" : "❌ Nonaktif (Bebas)"}`,
     "",
     "Silakan pilih menu di bawah:"
   ].join("\n");
@@ -179,9 +184,22 @@ async function renderAdminDashboard(chatId, messageId = null) {
 
 async function renderBridgeMenu(chatId, messageId = null) {
   const accounts = await getBridgeAccounts();
-  const targetBots = await getTargetBots();
-  const activeBots = await getActiveTargetBots();
+  const loginBots = await getTargetBots("login");
+  const cookieBots = await getTargetBots("cookie");
   const allWorkflows = await getAllRecordedWorkflows();
+
+  const formatBotLines = (bots) => {
+    if (!bots.length) return "   <i>(Belum ada bot terdaftar)</i>";
+    return bots
+      .map((b, i) => {
+        const wf = allWorkflows[b.username.toLowerCase()];
+        const wfTag = wf?.steps?.length ? `🎬 ${wf.steps.length} langkah` : "⚡ default";
+        const star = b.priority === 1 ? "⭐ " : "";
+        const status = b.enabled ? "✅" : "❌";
+        return `   ${i + 1}. ${star}<b>@${esc(b.username)}</b> [${status} | ${wfTag}]`;
+      })
+      .join("\n");
+  };
 
   const accountLines = accounts.length
     ? accounts
@@ -192,39 +210,32 @@ async function renderBridgeMenu(chatId, messageId = null) {
         .join("\n")
     : "Belum ada akun bridge.";
 
-  const botLines = targetBots.length
-    ? targetBots
-        .map((b, i) => {
-          const wf = allWorkflows[b.username.toLowerCase()];
-          const wfTag = wf?.steps?.length ? `🎬 ${wf.steps.length} langkah` : "⚡ alur default";
-          const star = b.priority === 1 ? "⭐ " : "";
-          const status = b.enabled ? "✅" : "❌";
-          return `${i + 1}. ${star}<b>@${esc(b.username)}</b> [${status} | ${wfTag}]`;
-        })
-        .join("\n")
-    : "Belum ada bot target terdaftar.";
-
   const text = [
     `🌉 <b>Telegram Bridge v${BOT_VERSION}</b>`,
     "",
-    `🤖 <b>Bot Target Generator (${targetBots.length} terdaftar · ${activeBots.length} aktif):</b>`,
-    botLines,
+    "<b>1️⃣ 🎬 Bot Ambil Link Login (Netflix Generator):</b>",
+    formatBotLines(loginBots),
+    "<i>Khusus fitur ambil akun / link login Netflix (PC/HP/TV).</i>",
     "",
-    `Akun Bridge Siap: <b>${accounts.filter((a) => a.enabled !== false).length}/${accounts.length}</b>`,
-    "<b>Daftar Akun Bridge:</b>",
+    "<b>2️⃣ 🍪 Bot Generate Cookies (Cookie Relay):</b>",
+    formatBotLines(cookieBots),
+    "<i>Khusus fitur convert cookies yang dikirim user menjadi link.</i>",
+    "",
+    "━━━━━━━━━━━━━━━━━━",
+    `📱 <b>Akun Bridge:</b> <b>${accounts.filter((a) => a.enabled !== false).length}/${accounts.length} siap</b>`,
     accountLines,
     "",
-    "Sistem mendukung failover otomatis jika bot utama error/down."
+    "💡 <i>Kedua fungsi bot target dipisahkan secara rapi dan mandiri.</i>"
   ].join("\n");
 
   const keyboard = [
     [
-      { text: "🤖 Kelola Bot Target", callback_data: "admin_target_bots" },
-      { text: "🌏 Prioritas Negara", callback_data: "admin_country_priority" }
+      { text: "🎬 Kelola Bot Ambil Link", callback_data: "admin_bots:login" },
+      { text: "🍪 Kelola Bot Cookies", callback_data: "admin_bots:cookie" }
     ],
     [
-      { text: "🎥 Rekam Alur", callback_data: "bridge_record_start" },
-      { text: "📋 Lihat Alur", callback_data: "bridge_workflow_view" }
+      { text: "🌏 Prioritas Negara", callback_data: "admin_country_priority" },
+      { text: "🎥 Rekam Alur", callback_data: "bridge_record_start" }
     ],
     [
       { text: "➕ Tambah Akun Bridge", callback_data: "bridge_add_account" },
@@ -245,9 +256,15 @@ async function renderBridgeMenu(chatId, messageId = null) {
   await sendMessage(chatId, text, { reply_markup: { inline_keyboard: keyboard } });
 }
 
-async function renderTargetBotsMenu(chatId, messageId = null) {
-  const targetBots = await getTargetBots();
+async function renderTargetBotsMenu(chatId, messageId = null, botType = "login") {
+  const isLogin = botType === "login";
+  const targetBots = await getTargetBots(botType);
   const allWorkflows = await getAllRecordedWorkflows();
+
+  const title = isLogin ? "🎬 Bot Ambil Link Login" : "🍪 Bot Generate Cookies";
+  const desc = isLogin
+    ? "Bot tujuan untuk <b>mengambil akun / link login Netflix</b> (PC/HP/TV) via alur tombol dan pencarian prioritas negara."
+    : "Bot tujuan untuk <b>mengubah raw cookies Netflix</b> yang dikirim pengguna menjadi link token login.";
 
   const botList = targetBots.map((b, i) => {
     const wf = allWorkflows[b.username.toLowerCase()];
@@ -258,17 +275,19 @@ async function renderTargetBotsMenu(chatId, messageId = null) {
   }).join("\n\n");
 
   const text = [
-    "🤖 <b>Kelola Bot Target Generator Netflix</b>",
+    `🤖 <b>Kelola ${title}</b>`,
     "",
-    "Anda dapat menambahkan beberapa bot tujuan. Worker bridge akan menggunakan bot dalam urutan prioritas failover.",
+    desc,
     "",
-    botList || "<i>Belum ada bot target.</i>",
+    botList || `<i>Belum ada bot ${title.toLowerCase()} terdaftar.</i>`,
     "",
     "Pilih bot di bawah untuk detail/atur atau tambah bot baru:"
   ].join("\n");
 
   const keyboard = [];
-  keyboard.push([{ text: "➕ Tambah Bot Target Baru", callback_data: "bot_add_start" }]);
+  keyboard.push([
+    { text: `➕ Tambah ${isLogin ? "Bot Ambil Link" : "Bot Cookies"} Baru`, callback_data: `bot_add_start:${botType}` }
+  ]);
 
   for (const b of targetBots) {
     const star = b.priority === 1 ? "⭐ " : "";
@@ -280,6 +299,13 @@ async function renderTargetBotsMenu(chatId, messageId = null) {
       }
     ]);
   }
+
+  keyboard.push([
+    {
+      text: isLogin ? "🍪 Beralih ke Bot Generate Cookies" : "🎬 Beralih ke Bot Ambil Link",
+      callback_data: isLogin ? "admin_bots:cookie" : "admin_bots:login"
+    }
+  ]);
 
   keyboard.push([{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]);
 
@@ -344,7 +370,7 @@ async function renderTargetBotDetail(chatId, messageId, botId) {
   const bot = await getTargetBot(botId);
   if (!bot) {
     await editMessage(chatId, messageId, "❌ Bot target tidak ditemukan.", {
-      reply_markup: { inline_keyboard: [[{ text: "🔙 Kembali", callback_data: "admin_target_bots" }]] }
+      reply_markup: { inline_keyboard: [[{ text: "🔙 Kembali", callback_data: "admin_bridge" }]] }
     });
     return;
   }
@@ -354,9 +380,13 @@ async function renderTargetBotDetail(chatId, messageId, botId) {
     ? `✅ Terekam (${workflow.steps.length} langkah) · Direkam: ${fmtDateTime(workflow.recordedAt)}`
     : "⚠️ Menggunakan alur bawaan default";
 
+  const isCookie = bot.type === "cookie";
+  const typeLabel = isCookie ? "🍪 Generate Cookies (Cookie Relay)" : "🎬 Ambil Link Login (Netflix Generator)";
+
   const text = [
     `🤖 <b>Detail Bot Target — @${esc(bot.username)}</b>`,
     "",
+    `• Fungsi: <b>${typeLabel}</b>`,
     `• Username: <b>@${esc(bot.username)}</b>`,
     `• Status: <b>${bot.enabled ? "✅ Aktif" : "❌ Nonaktif"}</b>`,
     `• Prioritas Failover: <b>#${bot.priority} ${bot.priority === 1 ? "(⭐ Bot Utama)" : ""}</b>`,
@@ -376,11 +406,8 @@ async function renderTargetBotDetail(chatId, messageId, botId) {
       { text: "📋 Lihat Alur Bot Ini", callback_data: `bot_wf_view:${bot.id}` }
     ],
     [
-      { text: "🌏 Prioritas Negara", callback_data: "admin_country_priority" },
-      { text: "🗑️ Hapus Bot", callback_data: `bot_del:${bot.id}` }
-    ],
-    [
-      { text: "🔙 Kembali ke Daftar Bot", callback_data: "admin_target_bots" }
+      { text: "🗑️ Hapus Bot", callback_data: `bot_del:${bot.id}` },
+      { text: "🔙 Kembali", callback_data: `admin_bots:${bot.type || "login"}` }
     ]
   ];
 
@@ -1009,17 +1036,19 @@ async function handleAdminTextWizard(chatId, from, text) {
   // Wizard: Tambah bot target baru
   if (wizard.action === "add_target_bot_username") {
     const clean = text.replace(/^@/, "").trim();
+    const botType = wizard.botType || "login";
+    const isLogin = botType === "login";
     try {
-      const newBot = await addTargetBot({ username: clean });
+      const newBot = await addTargetBot({ username: clean, type: botType });
       await clearAdminWizard(userId);
       await sendMessage(
         chatId,
-        `✅ <b>Bot target @${esc(newBot.username)} berhasil ditambahkan!</b>\n\nPrioritas Failover: <b>#${newBot.priority}</b>\n\nApakah Anda ingin langsung merekam alur interaktif untuk bot ini sekarang?`,
+        `✅ <b>${isLogin ? "🎬 Bot Ambil Link Login" : "🍪 Bot Generate Cookies"} @${esc(newBot.username)} berhasil ditambahkan!</b>\n\nPrioritas Failover: <b>#${newBot.priority}</b>\n\nApakah Anda ingin langsung merekam alur interaktif untuk bot ini sekarang?`,
         {
           reply_markup: {
             inline_keyboard: [
               [{ text: "🎥 Rekam Alur Bot Ini Sekarang", callback_data: `bot_rec_start:${newBot.id}` }],
-              [{ text: "🤖 Kelola Daftar Bot", callback_data: "admin_target_bots" }],
+              [{ text: `🤖 Kelola Daftar ${isLogin ? "Bot Ambil Link" : "Bot Cookies"}`, callback_data: `admin_bots:${botType}` }],
               [{ text: "🔙 Kembali ke Bridge", callback_data: "admin_bridge" }]
             ]
           }
@@ -1658,11 +1687,35 @@ async function handleMessage(message) {
       return;
     }
 
+    if (/^\/settarget_login\s+(.+)$/i.test(rawText) || /^\/setloginbot\s+(.+)$/i.test(rawText)) {
+      const match = rawText.match(/^\/(?:settarget_login|setloginbot)\s+(.+)$/i);
+      const target = match[1].trim().replace(/^@/, "");
+      await setSetting("target_bot", target);
+      await setSetting("target_bot_login", target);
+      await addTargetBot({ username: target, type: "login" }).catch(() => {});
+      await sendMessage(chatId, `✅ Bot target <b>Ambil Link Login</b> berhasil disimpan: <b>@${esc(target)}</b>`);
+      return;
+    }
+
+    if (/^\/settarget_cookie\s+(.+)$/i.test(rawText) || /^\/setcookiebot\s+(.+)$/i.test(rawText)) {
+      const match = rawText.match(/^\/(?:settarget_cookie|setcookiebot)\s+(.+)$/i);
+      const target = match[1].trim().replace(/^@/, "");
+      await setSetting("target_bot_cookie", target);
+      await addTargetBot({ username: target, type: "cookie" }).catch(() => {});
+      await sendMessage(chatId, `✅ Bot target <b>Generate Cookies</b> berhasil disimpan: <b>@${esc(target)}</b>`);
+      return;
+    }
+
     if (/^\/settarget\s+(.+)$/i.test(rawText)) {
       const match = rawText.match(/^\/settarget\s+(.+)$/i);
       const target = match[1].trim().replace(/^@/, "");
       await setSetting("target_bot", target);
-      await sendMessage(chatId, `✅ Bot target berhasil disimpan: <b>@${esc(target)}</b>`);
+      await setSetting("target_bot_login", target);
+      await addTargetBot({ username: target, type: "login" }).catch(() => {});
+      await sendMessage(
+        chatId,
+        `✅ Bot target <b>Ambil Link Login</b> diset ke: <b>@${esc(target)}</b>\n\n💡 <i>Catatan: Untuk mengatur Bot Generate Cookies, gunakan perintah:</i>\n<code>/settarget_cookie @username</code>`
+      );
       return;
     }
 
@@ -1682,7 +1735,31 @@ async function handleMessage(message) {
     }
 
     if (/^\/target(?:@\w+)?$/i.test(rawText) || /^\/bot(?:@\w+)?$/i.test(rawText)) {
-      await renderTargetBotsMenu(chatId);
+      await renderTargetBotsMenu(chatId, null, "login");
+      return;
+    }
+
+    if (/^\/tambahbot_login\s+(.+)$/i.test(rawText)) {
+      const match = rawText.match(/^\/tambahbot_login\s+(.+)$/i);
+      const clean = match[1].replace(/^@/, "").trim();
+      try {
+        const newBot = await addTargetBot({ username: clean, type: "login" });
+        await sendMessage(chatId, `✅ <b>Bot Ambil Link Login @${esc(newBot.username)} berhasil ditambahkan!</b> (Prioritas #${newBot.priority})`);
+      } catch (e) {
+        await sendMessage(chatId, `❌ Gagal: ${esc(e.message)}`);
+      }
+      return;
+    }
+
+    if (/^\/tambahbot_cookie\s+(.+)$/i.test(rawText)) {
+      const match = rawText.match(/^\/tambahbot_cookie\s+(.+)$/i);
+      const clean = match[1].replace(/^@/, "").trim();
+      try {
+        const newBot = await addTargetBot({ username: clean, type: "cookie" });
+        await sendMessage(chatId, `✅ <b>Bot Generate Cookies @${esc(newBot.username)} berhasil ditambahkan!</b> (Prioritas #${newBot.priority})`);
+      } catch (e) {
+        await sendMessage(chatId, `❌ Gagal: ${esc(e.message)}`);
+      }
       return;
     }
 
@@ -1690,15 +1767,15 @@ async function handleMessage(message) {
       const match = rawText.match(/^\/tambahbot\s+(.+)$/i);
       const clean = match[1].replace(/^@/, "").trim();
       try {
-        const newBot = await addTargetBot({ username: clean });
+        const newBot = await addTargetBot({ username: clean, type: "login" });
         await sendMessage(
           chatId,
-          `✅ <b>Bot target @${esc(newBot.username)} berhasil ditambahkan!</b>\n\nPrioritas Failover: <b>#${newBot.priority}</b>`,
+          `✅ <b>Bot Ambil Link Login @${esc(newBot.username)} berhasil ditambahkan!</b>\n\nPrioritas Failover: <b>#${newBot.priority}</b>\n\n💡 <i>Untuk menambah Bot Generate Cookies, gunakan:</i> <code>/tambahbot_cookie @username</code>`,
           {
             reply_markup: {
               inline_keyboard: [
                 [{ text: "🎥 Rekam Alur Bot Ini", callback_data: `bot_rec_start:${newBot.id}` }],
-                [{ text: "🤖 Kelola Daftar Bot", callback_data: "admin_target_bots" }]
+                [{ text: "🤖 Kelola Daftar Bot", callback_data: "admin_bots:login" }]
               ]
             }
           }
@@ -1956,15 +2033,20 @@ async function handleCallbackQuery(callbackQuery) {
   }
 
   // Target Bots Management Sub-actions
-  if (data === "admin_target_bots") {
-    return renderTargetBotsMenu(chatId, messageId);
+  if (data === "admin_target_bots" || data === "admin_bots:login") {
+    return renderTargetBotsMenu(chatId, messageId, "login");
+  }
+  if (data === "admin_bots:cookie") {
+    return renderTargetBotsMenu(chatId, messageId, "cookie");
   }
 
-  if (data === "bot_add_start") {
-    await setAdminWizard(from.id, { action: "add_target_bot_username" });
+  if (data.startsWith("bot_add_start")) {
+    const type = data.includes(":") ? data.split(":")[1] : "login";
+    await setAdminWizard(from.id, { action: "add_target_bot_username", botType: type });
+    const isLogin = type === "login";
     await sendMessage(
       chatId,
-      "🤖 Masukkan <b>username bot target baru</b> yang ingin ditambahkan (contoh: <code>SSNetflixBot</code> atau <code>@NetflixGenBot</code>):\n\n/batal untuk membatalkan."
+      `🤖 Masukkan <b>username ${isLogin ? "Bot Ambil Link Login" : "Bot Generate Cookies"} baru</b> yang ingin ditambahkan (contoh: <code>${isLogin ? "SSNetflixBot" : "cookiesnetflixskystorebot"}</code>):\n\n/batal untuk membatalkan.`
     );
     return;
   }
@@ -1992,6 +2074,7 @@ async function handleCallbackQuery(callbackQuery) {
   if (data.startsWith("bot_del:")) {
     const botId = data.replace("bot_del:", "");
     const bot = await getTargetBot(botId);
+    const botType = bot?.type || "login";
     await deleteTargetBot(botId);
     await editMessage(
       chatId,
@@ -1999,7 +2082,7 @@ async function handleCallbackQuery(callbackQuery) {
       `✅ Bot target <b>@${esc(bot?.username || botId)}</b> berhasil dihapus.`,
       {
         reply_markup: {
-          inline_keyboard: [[{ text: "🔙 Kembali ke Daftar Bot", callback_data: "admin_target_bots" }]]
+          inline_keyboard: [[{ text: "🔙 Kembali ke Daftar Bot", callback_data: `admin_bots:${botType}` }]]
         }
       }
     );

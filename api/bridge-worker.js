@@ -4,7 +4,9 @@ import {
   connectAuthorizedUser,
   sendRelayText,
   waitForTargetReply,
-  targetUsername
+  targetUsername,
+  targetCookieUsername,
+  targetLoginUsername
 } from "../lib/userbot.js";
 import { executeNetflixBridgeFlow } from "../lib/netflix-bridge.js";
 import {
@@ -328,19 +330,25 @@ async function processOneJob(job) {
     const isAutoGenerate = !payloadText || /^(generate|ambil|\/ambil|token)$/i.test(payloadText);
 
     let result = null;
-    const activeBots = await getActiveTargetBots();
-    const candidateBots = activeBots.length > 0
-      ? activeBots.map((b) => b.username)
-      : [await getSetting("target_bot", targetUsername())];
-
-    const countryPriority = await getSetting("country_priority", ["ID", "MY", "SG"]);
     let lastError = null;
-    let successfulTarget = candidateBots[0];
+    let successfulTarget = null;
 
     if (isAutoGenerate) {
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🎬 1. FITUR MENGAMBIL LINK LOGIN (NETFLIX ACCOUNT / LOGIN LINK GENERATOR)
+      // Bot target khusus: SSNetflixBot atau daftar bot login
+      // ═══════════════════════════════════════════════════════════════════════
+      const activeLoginBots = await getActiveTargetBots("login");
+      const candidateBots = activeLoginBots.length > 0
+        ? activeLoginBots.map((b) => b.username)
+        : [await getSetting("target_bot_login", await getSetting("target_bot", targetLoginUsername()))];
+
+      const countryPriority = await getSetting("country_priority", ["ID", "MY", "SG"]);
+      successfulTarget = candidateBots[0];
+
       for (const botName of candidateBots) {
         try {
-          console.log(`[worker] Menjalankan automated Netflix bridge flow ke @${botName} untuk job ${job.id}`);
+          console.log(`[worker] [AMBIL LINK LOGIN] Menjalankan bridge flow ke @${botName} untuk job ${job.id}`);
           result = await executeNetflixBridgeFlow(client, {
             targetBot: botName,
             countryPriorities: countryPriority,
@@ -351,15 +359,26 @@ async function processOneJob(job) {
             break;
           }
         } catch (err) {
-          console.warn(`[worker] Bot @${botName} gagal (${err.message}). Mencoba bot target berikutnya...`);
+          console.warn(`[worker] Bot ambil link @${botName} gagal (${err.message}). Mencoba bot login berikutnya...`);
           lastError = err;
         }
       }
       if (!result && lastError) throw lastError;
     } else {
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🍪 2. FITUR GENERATE COOKIES (COOKIE TO LOGIN TOKEN RELAY)
+      // Bot target khusus: cookiesnetflixskystorebot atau daftar bot cookies
+      // ═══════════════════════════════════════════════════════════════════════
+      const activeCookieBots = await getActiveTargetBots("cookie");
+      const candidateBots = activeCookieBots.length > 0
+        ? activeCookieBots.map((b) => b.username)
+        : [await getSetting("target_bot_cookie", targetCookieUsername())];
+
+      successfulTarget = candidateBots[0];
+
       for (const botName of candidateBots) {
         try {
-          console.log(`[worker] Menjalankan relay cookies ke @${botName} untuk job ${job.id}`);
+          console.log(`[worker] [GENERATE COOKIES] Menjalankan relay cookies ke @${botName} untuk job ${job.id}`);
           const sent = await sendRelayText(client, payloadText, { targetBot: botName });
           const relayRes = await waitForTargetReply(client, sent.sentMessageId, { targetBot: botName });
           result = {
@@ -369,7 +388,7 @@ async function processOneJob(job) {
           successfulTarget = botName;
           break;
         } catch (err) {
-          console.warn(`[worker] Relay ke @${botName} gagal (${err.message}). Mencoba bot berikutnya...`);
+          console.warn(`[worker] Bot generate cookie @${botName} gagal (${err.message}). Mencoba bot cookie berikutnya...`);
           lastError = err;
         }
       }

@@ -208,6 +208,8 @@ insert into public.bot_settings (key, value)
 values
   ('country_priority', '["ID", "MY", "SG"]'::jsonb),
   ('target_bot', '"SSNetflixBot"'::jsonb),
+  ('target_bot_login', '"SSNetflixBot"'::jsonb),
+  ('target_bot_cookie', '"cookiesnetflixskystorebot"'::jsonb),
   ('support_username', '"iLinkinStore"'::jsonb),
   ('require_warranty', 'true'::jsonb),
   ('daily_limit_default', '5'::jsonb),
