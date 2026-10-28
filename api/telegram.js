@@ -31,6 +31,11 @@ import {
   clearAdminWizard,
   grantUserWarranty,
   getAllUserIds,
+  getUserByIdOrUsername,
+  listVipUsers,
+  activateUserVip,
+  revokeUserVip,
+  extendUserVip,
   getRecordedWorkflow,
   deleteRecordedWorkflow,
   getAllRecordedWorkflows,
@@ -161,6 +166,10 @@ async function renderAdminDashboard(chatId, messageId = null) {
     inline_keyboard: [
       [{ text: "🌉 Telegram Bridge", callback_data: "admin_bridge" }],
       [{ text: "🌏 Negara & Foto Working", callback_data: "admin_workflow" }],
+      [
+        { text: "👑 Daftar User VIP", callback_data: "admin_vip_users:1:all" },
+        { text: "⚡ Aktifkan VIP", callback_data: "admin_vip_act_start" }
+      ],
       [{ text: "📦 Kelola Paket", callback_data: "admin_packages" }],
       [
         { text: "🎟️ Generate Voucher", callback_data: "admin_gen_voucher" },
@@ -485,6 +494,249 @@ async function renderPackagesMenu(chatId, messageId = null) {
     ]),
     [{ text: "🔙 Kembali", callback_data: "admin_back" }]
   ];
+
+  if (messageId) {
+    try {
+      await editMessage(chatId, messageId, text, { reply_markup: { inline_keyboard: keyboard } });
+      return;
+    } catch {}
+  }
+  await sendMessage(chatId, text, { reply_markup: { inline_keyboard: keyboard } });
+}
+
+// ─── VIP USERS MANAGEMENT & DIRECT ACTIVATION ─────────────────────────────────
+
+async function renderVipUsersMenu(chatId, messageId = null, page = 1, filter = "all", search = "") {
+  const p = Math.max(1, Number(page) || 1);
+  const data = await listVipUsers({ filter, page: p, limit: 6, search });
+  const { users, total, totalPages } = data;
+
+  let filterLabel = "Semua";
+  if (filter === "active") filterLabel = "🟢 Aktif";
+  if (filter === "lifetime") filterLabel = "♾️ Lifetime";
+  if (filter === "expired") filterLabel = "🔴 Expired";
+
+  let listContent = "";
+  if (!users.length) {
+    listContent = search
+      ? `<i>Tidak ditemukan pengguna VIP dengan kata kunci "<b>${esc(search)}</b>".</i>`
+      : `<i>Belum ada data pengguna VIP dalam kategori <b>${filterLabel}</b>.</i>`;
+  } else {
+    listContent = users.map((u, i) => {
+      const num = (p - 1) * 6 + i + 1;
+      const isLifetime = Boolean(u.warranty_lifetime);
+      const expDate = u.warranty_expires_at ? new Date(u.warranty_expires_at) : null;
+      const isExpired = !isLifetime && (!expDate || expDate.getTime() <= Date.now());
+
+      let statusBadge = "🟢 Aktif";
+      let expStr = "-";
+      if (u.is_banned) {
+        statusBadge = "⛔ Terblokir";
+      } else if (isLifetime) {
+        statusBadge = "♾️ Lifetime";
+        expStr = "Selamanya";
+      } else if (isExpired) {
+        statusBadge = "🔴 Expired";
+        expStr = expDate ? expDate.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }) : "-";
+      } else {
+        statusBadge = "🟢 Aktif";
+        expStr = expDate ? expDate.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }) : "-";
+      }
+
+      const userTag = u.username ? `@${esc(u.username)}` : (u.first_name ? esc(u.first_name) : `ID: ${u.telegram_user_id}`);
+      return `${num}. <b>${userTag}</b> (<code>${u.telegram_user_id}</code>)\n   🏷️ Status: <b>${statusBadge}</b> | 📦 ${esc(u.warranty_package_name || "VIP")}\n   ⏳ s/d: ${expStr} | 🔄 Limit: ${u.warranty_daily_limit || 5}x/hari`;
+    }).join("\n\n");
+  }
+
+  const text = [
+    `👑 <b>Daftar Pengguna VIP / Lisensi</b>`,
+    "",
+    `📊 Kategori: <b>${filterLabel}</b> ${search ? `| Cari: "<b>${esc(search)}</b>"` : ""}`,
+    `👥 Total: <b>${total} pengguna</b> (Halaman <b>${p}/${totalPages}</b>)`,
+    "",
+    listContent,
+    "",
+    "<i>Pilih pengguna di bawah untuk melihat rincian / memperpanjang / mencabut VIP:</i>"
+  ].join("\n");
+
+  const keyboard = [];
+
+  // Filter bar
+  keyboard.push([
+    { text: filter === "all" ? "• 📋 Semua •" : "📋 Semua", callback_data: `admin_vip_users:1:all` },
+    { text: filter === "active" ? "• 🟢 Aktif •" : "🟢 Aktif", callback_data: `admin_vip_users:1:active` },
+    { text: filter === "lifetime" ? "• ♾️ Lifetime •" : "♾️ Lifetime", callback_data: `admin_vip_users:1:lifetime` },
+    { text: filter === "expired" ? "• 🔴 Expired •" : "🔴 Expired", callback_data: `admin_vip_users:1:expired` }
+  ]);
+
+  // User detail buttons (2 per row)
+  for (let i = 0; i < users.length; i += 2) {
+    const row = [];
+    const u1 = users[i];
+    const label1 = u1.username ? `@${u1.username}` : `${u1.first_name || u1.telegram_user_id}`;
+    row.push({ text: `👤 ${label1.slice(0, 16)}`, callback_data: `admin_vip_detail:${u1.telegram_user_id}` });
+
+    if (users[i + 1]) {
+      const u2 = users[i + 1];
+      const label2 = u2.username ? `@${u2.username}` : `${u2.first_name || u2.telegram_user_id}`;
+      row.push({ text: `👤 ${label2.slice(0, 16)}`, callback_data: `admin_vip_detail:${u2.telegram_user_id}` });
+    }
+    keyboard.push(row);
+  }
+
+  // Pagination & Search
+  const navRow = [];
+  if (p > 1) {
+    navRow.push({ text: `◀️ Hal ${p - 1}`, callback_data: `admin_vip_users:${p - 1}:${filter}` });
+  }
+  navRow.push({ text: "🔍 Cari User", callback_data: "admin_vip_search" });
+  if (p < totalPages) {
+    navRow.push({ text: `Hal ${p + 1} ▶️`, callback_data: `admin_vip_users:${p + 1}:${filter}` });
+  }
+  if (navRow.length > 0) {
+    keyboard.push(navRow);
+  }
+
+  // Actions
+  keyboard.push([
+    { text: "⚡ Aktifkan VIP User Baru", callback_data: "admin_vip_act_start" }
+  ]);
+  keyboard.push([
+    { text: "🔙 Kembali ke Admin", callback_data: "admin_back" }
+  ]);
+
+  if (messageId) {
+    try {
+      await editMessage(chatId, messageId, text, { reply_markup: { inline_keyboard: keyboard } });
+      return;
+    } catch {}
+  }
+  await sendMessage(chatId, text, { reply_markup: { inline_keyboard: keyboard } });
+}
+
+async function renderVipUserDetail(chatId, messageId = null, targetUserId) {
+  const uid = String(targetUserId).trim();
+  const user = await getUser(uid);
+  if (!user) {
+    const errorText = `❌ Data pengguna dengan ID <code>${esc(uid)}</code> tidak ditemukan.`;
+    const kb = [[{ text: "🔙 Kembali ke Daftar VIP", callback_data: "admin_vip_users:1:all" }]];
+    if (messageId) {
+      await editMessage(chatId, messageId, errorText, { reply_markup: { inline_keyboard: kb } });
+    } else {
+      await sendMessage(chatId, errorText, { reply_markup: { inline_keyboard: kb } });
+    }
+    return;
+  }
+
+  const warranty = await checkUserWarranty(user.telegram_user_id);
+  const isLifetime = Boolean(user.warranty_lifetime);
+  const expDate = user.warranty_expires_at ? new Date(user.warranty_expires_at) : null;
+
+  let statusText = "🟢 <b>Aktif (Berlisensi VIP)</b>";
+  let expText = "-";
+  if (user.is_banned) {
+    statusText = "⛔ <b>Terblokir / Banned</b>";
+  } else if (isLifetime) {
+    statusText = "♾️ <b>VIP Lifetime (Selamanya)</b>";
+    expText = "Permanen / Tanpa Batas Waktu";
+  } else if (warranty.isExpired) {
+    statusText = "🔴 <b>Kedaluwarsa (Expired)</b>";
+    expText = expDate
+      ? `${expDate.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" })} ${expDate.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" })} WIB`
+      : "Belum aktif";
+  } else {
+    const diffDays = Math.max(0, Math.ceil((expDate.getTime() - Date.now()) / 86400000));
+    expText = `${expDate.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" })} (${diffDays} hari lagi)`;
+  }
+
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ") || "-";
+
+  const text = [
+    `👤 <b>Rincian Pengguna VIP</b>`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `• <b>Telegram ID:</b> <code>${user.telegram_user_id}</code>`,
+    `• <b>Username:</b> ${user.username ? `@${esc(user.username)}` : "<i>(tanpa username)</i>"}`,
+    `• <b>Nama:</b> <b>${esc(fullName)}</b>`,
+    `• <b>Status VIP:</b> ${statusText}`,
+    `• <b>Paket:</b> <b>${esc(user.warranty_package_name || "-")}</b>`,
+    `• <b>Masa Aktif:</b> <b>${expText}</b>`,
+    `• <b>Limit Harian:</b> <b>${warranty.dailyLimit || user.warranty_daily_limit || 5}x per hari</b>`,
+    `• <b>Klaim Hari Ini:</b> <b>${warranty.claimsToday || 0}x</b> (Sisa: <b>${warranty.remainingToday || 0}x</b>)`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    "",
+    "Pilih tindakan untuk pengguna ini:"
+  ].join("\n");
+
+  const keyboard = [
+    [
+      { text: "➕ Tambah +30 Hari", callback_data: `admin_vip_ext:${user.telegram_user_id}:30` },
+      { text: "➕ Tambah +7 Hari", callback_data: `admin_vip_ext:${user.telegram_user_id}:7` }
+    ],
+    [
+      { text: "♾️ Set Jadi Lifetime", callback_data: `admin_vip_life:${user.telegram_user_id}` },
+      { text: "🔄 Ganti Paket/Durasi", callback_data: `admin_vip_change_pkg:${user.telegram_user_id}` }
+    ],
+    [
+      { text: "❌ Cabut Status VIP", callback_data: `admin_vip_revoke_ask:${user.telegram_user_id}` }
+    ],
+    [
+      { text: "🔙 Kembali ke Daftar VIP", callback_data: "admin_vip_users:1:all" }
+    ]
+  ];
+
+  if (messageId) {
+    try {
+      await editMessage(chatId, messageId, text, { reply_markup: { inline_keyboard: keyboard } });
+      return;
+    } catch {}
+  }
+  await sendMessage(chatId, text, { reply_markup: { inline_keyboard: keyboard } });
+}
+
+async function renderVipSelectPackageMenu(chatId, messageId = null, targetUserId) {
+  const uid = String(targetUserId).trim();
+  const user = await getUser(uid);
+  const packages = await getPackages({ onlyEnabled: true });
+
+  const displayName = user?.username ? `@${esc(user.username)}` : (user?.first_name ? esc(user.first_name) : `ID: ${uid}`);
+
+  const text = [
+    `⚡ <b>Pilih Paket VIP untuk Pengguna</b>`,
+    "",
+    `🎯 Target: <b>${displayName}</b> (<code>${uid}</code>)`,
+    "",
+    "Pilih paket atau durasi di bawah untuk langsung mengaktifkan VIP pengguna ini:"
+  ].join("\n");
+
+  const keyboard = [];
+
+  if (packages.length > 0) {
+    for (const p of packages) {
+      keyboard.push([
+        {
+          text: `📦 ${p.name} (${fmtDuration(p.duration_days, p.lifetime, p.duration_hours)} - ${p.daily_limit}x/hr)`,
+          callback_data: `vip_pick_pkg:${uid}:${p.id}`
+        }
+      ]);
+    }
+  }
+
+  keyboard.push([
+    { text: "⚡ 7 Hari", callback_data: `vip_pick_quick:${uid}:7d` },
+    { text: "⚡ 30 Hari", callback_data: `vip_pick_quick:${uid}:30d` },
+    { text: "⚡ 90 Hari", callback_data: `vip_pick_quick:${uid}:90d` }
+  ]);
+  keyboard.push([
+    { text: "♾️ VIP Lifetime (Selamanya)", callback_data: `vip_pick_quick:${uid}:lifetime` }
+  ]);
+
+  keyboard.push([
+    { text: "✏️ Input Durasi Bebas / Custom", callback_data: `vip_pick_custom:${uid}` }
+  ]);
+
+  keyboard.push([
+    { text: "🔙 Kembali ke Daftar VIP", callback_data: "admin_vip_users:1:all" }
+  ]);
 
   if (messageId) {
     try {
@@ -1496,6 +1748,120 @@ async function handleAdminTextWizard(chatId, from, text) {
     return true;
   }
 
+  // 10. Wizard: Cari User VIP
+  if (wizard.action === "vip_search_keyword") {
+    await clearAdminWizard(userId);
+    await renderVipUsersMenu(chatId, null, 1, "all", text);
+    return true;
+  }
+
+  // 11. Wizard: Input User Target Aktivasi VIP
+  if (wizard.action === "vip_act_target") {
+    const clean = text.trim();
+    const user = await getUserByIdOrUsername(clean);
+    const targetUid = user?.telegram_user_id || clean.replace(/[^\d]/g, "");
+
+    if (!targetUid) {
+      await sendMessage(
+        chatId,
+        `❌ Pengguna "<code>${esc(clean)}</code>" belum pernah menekan /start di bot ini.\n\nSilakan masukkan <b>ID Telegram</b> berupa angka (contoh: <code>123456789</code>), atau minta user memulai chat dengan bot terlebih dahulu.\n\n/batal untuk membatalkan.`
+      );
+      return true;
+    }
+
+    await clearAdminWizard(userId);
+    await renderVipSelectPackageMenu(chatId, null, targetUid);
+    return true;
+  }
+
+  // 12. Wizard: Durasi Custom VIP
+  if (wizard.action === "vip_act_custom_duration") {
+    const targetUid = wizard.targetUid;
+    const lower = text.toLowerCase().trim();
+    const isLifetime = ["lifetime", "selamanya"].includes(lower);
+    let durationDays = 0;
+    let durationHours = 0;
+
+    const hourMatch = lower.match(/^(\d+)\s*(?:jam|jm|hour|h)$/i);
+    const dayMatch = lower.match(/^(\d+)\s*(?:hari|hr|day|d)?$/i);
+
+    if (isLifetime) {
+      // lifetime
+    } else if (hourMatch) {
+      durationHours = parseInt(hourMatch[1], 10);
+    } else if (dayMatch) {
+      durationDays = parseInt(dayMatch[1], 10);
+    } else {
+      await sendMessage(chatId, "❌ Format durasi salah. Contoh: <code>30 hari</code>, <code>12 jam</code>, atau <code>lifetime</code>.\n\n/batal untuk membatalkan.");
+      return true;
+    }
+
+    if (isLifetime) {
+      await clearAdminWizard(userId);
+      try {
+        const res = await activateUserVip({
+          userId: targetUid,
+          lifetime: true,
+          packageName: "VIP Lifetime (Admin)"
+        });
+        await sendMessage(chatId, `✅ <b>VIP Lifetime Berhasil Diaktifkan!</b>\n\n• User: <code>${targetUid}</code>\n• Paket: <b>VIP Lifetime</b>\n• Masa Aktif: <b>Selamanya ♾️</b>`);
+        try {
+          await sendMessage(targetUid, "🎉 <b>Selamat! Akun Anda telah diaktifkan menjadi VIP Lifetime (Selamanya ♾️) oleh Admin.</b>");
+        } catch {}
+        await renderVipUserDetail(chatId, null, targetUid);
+      } catch (e) {
+        await sendMessage(chatId, `❌ Gagal aktivasi VIP: ${esc(e.message)}`);
+      }
+      return true;
+    }
+
+    await setAdminWizard(userId, {
+      action: "vip_act_custom_limit",
+      targetUid,
+      durationDays,
+      durationHours
+    });
+    await sendMessage(
+      chatId,
+      `✅ Durasi: <b>${fmtDuration(durationDays, false, durationHours)}</b>\n\nMasukkan <b>limit klaim per hari</b> (contoh: <code>5</code>):\n\n/batal untuk membatalkan.`
+    );
+    return true;
+  }
+
+  // 13. Wizard: Limit Custom VIP
+  if (wizard.action === "vip_act_custom_limit") {
+    const limit = parseInt(text, 10);
+    if (!Number.isFinite(limit) || limit < 1 || limit > 100) {
+      await sendMessage(chatId, "❌ Masukkan angka limit antara 1 - 100.");
+      return true;
+    }
+
+    const { targetUid, durationDays, durationHours } = wizard;
+    await clearAdminWizard(userId);
+
+    try {
+      const res = await activateUserVip({
+        userId: targetUid,
+        durationDays,
+        durationHours,
+        dailyLimit: limit,
+        packageName: `VIP ${fmtDuration(durationDays, false, durationHours)} (Admin)`
+      });
+      const expStr = res.expiresAt ? new Date(res.expiresAt).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }) : "-";
+      await sendMessage(
+        chatId,
+        `✅ <b>VIP Custom Berhasil Diaktifkan!</b>\n\n• User: <code>${targetUid}</code>\n• Paket: <b>${esc(res.user.warranty_package_name)}</b>\n• Masa Aktif: <b>${expStr}</b>\n• Limit Harian: <b>${limit}x/hari</b>`
+      );
+      try {
+        await sendMessage(targetUid, `🎉 <b>Selamat! Akun VIP Anda telah diaktifkan oleh Admin.</b>\n\n📦 Paket: <b>${esc(res.user.warranty_package_name)}</b>\n⏳ Masa Aktif: <b>${expStr}</b>\n🔄 Limit Harian: <b>${limit}x/hari</b>`);
+      } catch {}
+      await renderVipUserDetail(chatId, null, targetUid);
+    } catch (e) {
+      await sendMessage(chatId, `❌ Gagal aktivasi VIP: ${esc(e.message)}`);
+    }
+    return true;
+  }
+
   return false;
 }
 
@@ -1627,6 +1993,109 @@ async function handleMessage(message) {
   if (isAdmin(from?.id)) {
     if (/^\/admin(?:@\w+)?$/i.test(rawText)) {
       await renderAdminDashboard(chatId);
+      return;
+    }
+
+    if (/^\/(?:daftartvip|listvip|vip)(?:@\w+)?$/i.test(rawText)) {
+      await renderVipUsersMenu(chatId, null, 1, "all");
+      return;
+    }
+
+    if (/^\/aktifkanvip(?:\s+(.+))?$/i.test(rawText)) {
+      const match = rawText.match(/^\/aktifkanvip(?:\s+(.+))?$/i);
+      const arg = match?.[1]?.trim();
+      if (!arg) {
+        await setAdminWizard(from.id, { action: "vip_act_target" });
+        await sendMessage(
+          chatId,
+          "⚡ Masukkan <b>Telegram User ID</b> atau <b>@username</b> pengguna yang ingin diaktifkan VIP:\n\n/batal untuk membatalkan."
+        );
+        return;
+      }
+
+      const parts = arg.split(/\s+/);
+      const targetQuery = parts[0];
+      const durationQuery = parts.slice(1).join(" ") || "30";
+
+      const user = await getUserByIdOrUsername(targetQuery);
+      const targetUid = user?.telegram_user_id || targetQuery.replace(/[^\d]/g, "");
+
+      if (!targetUid) {
+        await sendMessage(chatId, `❌ User <code>${esc(targetQuery)}</code> belum terdaftar di sistem. Masukkan Telegram User ID (angka).`);
+        return;
+      }
+
+      const lowerDur = durationQuery.toLowerCase();
+      const isLifetime = ["lifetime", "selamanya"].includes(lowerDur);
+      let days = parseInt(durationQuery, 10);
+      if (isNaN(days) && !isLifetime) days = 30;
+
+      try {
+        const res = await activateUserVip({
+          userId: targetUid,
+          durationDays: isLifetime ? 0 : days,
+          lifetime: isLifetime,
+          packageName: isLifetime ? "VIP Lifetime (Admin)" : `VIP ${days} Hari (Admin)`
+        });
+        const expStr = res.expiresAt ? new Date(res.expiresAt).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }) : "Selamanya ♾️";
+        await sendMessage(
+          chatId,
+          `✅ <b>VIP Berhasil Diaktifkan!</b>\n\n• User ID: <code>${targetUid}</code>\n• Paket: <b>${esc(res.user.warranty_package_name)}</b>\n• Masa Aktif: <b>${expStr}</b>\n• Limit Harian: <b>${res.user.warranty_daily_limit}x/hari</b>`
+        );
+        try {
+          await sendMessage(targetUid, `🎉 <b>Selamat! Akun VIP Anda telah diaktifkan oleh Admin.</b>\n\n📦 Paket: <b>${esc(res.user.warranty_package_name)}</b>\n⏳ Masa Aktif: <b>${expStr}</b>\n🔄 Limit Harian: <b>${res.user.warranty_daily_limit}x/hari</b>`);
+        } catch {}
+      } catch (e) {
+        await sendMessage(chatId, `❌ Gagal aktivasi VIP: ${esc(e.message)}`);
+      }
+      return;
+    }
+
+    if (/^\/cabutvip\s+(.+)$/i.test(rawText)) {
+      const match = rawText.match(/^\/cabutvip\s+(.+)$/i);
+      const targetQuery = match[1].trim();
+      const user = await getUserByIdOrUsername(targetQuery);
+      const targetUid = user?.telegram_user_id || targetQuery.replace(/[^\d]/g, "");
+
+      if (!targetUid) {
+        await sendMessage(chatId, `❌ User <code>${esc(targetQuery)}</code> tidak ditemukan.`);
+        return;
+      }
+
+      try {
+        await revokeUserVip(targetUid);
+        await sendMessage(chatId, `✅ Status VIP untuk user <code>${targetUid}</code> berhasil dicabut.`);
+        try {
+          await sendMessage(targetUid, "ℹ️ Status lisensi VIP Anda telah dinonaktifkan oleh Admin.");
+        } catch {}
+      } catch (e) {
+        await sendMessage(chatId, `❌ Gagal: ${esc(e.message)}`);
+      }
+      return;
+    }
+
+    if (/^\/tambahhari\s+(\S+)(?:\s+(\d+))?$/i.test(rawText)) {
+      const match = rawText.match(/^\/tambahhari\s+(\S+)(?:\s+(\d+))?$/i);
+      const targetQuery = match[1].trim();
+      const days = parseInt(match[2] || "30", 10);
+      const user = await getUserByIdOrUsername(targetQuery);
+      const targetUid = user?.telegram_user_id || targetQuery.replace(/[^\d]/g, "");
+
+      if (!targetUid) {
+        await sendMessage(chatId, `❌ User <code>${esc(targetQuery)}</code> tidak ditemukan.`);
+        return;
+      }
+
+      try {
+        const res = await extendUserVip(targetUid, days);
+        const expDate = res.expiresAt ? new Date(res.expiresAt).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }) : "-";
+        await sendMessage(chatId, `✅ Berhasil memperpanjang VIP user <code>${targetUid}</code> sebesar <b>+${days} hari</b>!\n⏳ Masa aktif baru: <b>${expDate}</b>`);
+        try {
+          await sendMessage(targetUid, `🎉 <b>Masa aktif VIP Anda telah diperpanjang oleh Admin!</b>\n\n➕ Tambahan durasi: <b>${days} Hari</b>\n⏳ Masa aktif baru: <b>${expDate}</b>`);
+        } catch {}
+      } catch (e) {
+        await sendMessage(chatId, `❌ Gagal: ${esc(e.message)}`);
+      }
       return;
     }
 
@@ -1954,6 +2423,178 @@ async function handleCallbackQuery(callbackQuery) {
   if (!isAdmin(from?.id)) return;
 
   if (data === "admin_back") return renderAdminDashboard(chatId, messageId);
+
+  // VIP Management Callbacks
+  if (data.startsWith("admin_vip_users:")) {
+    const parts = data.split(":");
+    const page = parseInt(parts[1], 10) || 1;
+    const filter = parts[2] || "all";
+    return renderVipUsersMenu(chatId, messageId, page, filter);
+  }
+
+  if (data.startsWith("admin_vip_detail:")) {
+    const uid = data.split(":")[1];
+    return renderVipUserDetail(chatId, messageId, uid);
+  }
+
+  if (data === "admin_vip_act_start") {
+    await setAdminWizard(from.id, { action: "vip_act_target" });
+    await sendMessage(
+      chatId,
+      [
+        "⚡ <b>Aktivasi VIP Pengguna Langsung</b>",
+        "",
+        "Masukkan <b>Telegram User ID</b> (angka) atau <b>@username</b> pengguna yang ingin diaktifkan VIP:",
+        "Contoh: <code>123456789</code> atau <code>@username</code>",
+        "",
+        "/batal untuk membatalkan."
+      ].join("\n")
+    );
+    return;
+  }
+
+  if (data === "admin_vip_search") {
+    await setAdminWizard(from.id, { action: "vip_search_keyword" });
+    await sendMessage(
+      chatId,
+      [
+        "🔍 <b>Pencarian Pengguna VIP</b>",
+        "",
+        "Kirimkan <b>User ID</b> atau <b>@username</b> atau nama yang ingin dicari:",
+        "",
+        "/batal untuk membatalkan."
+      ].join("\n")
+    );
+    return;
+  }
+
+  if (data.startsWith("admin_vip_ext:")) {
+    const [, uid, daysStr] = data.split(":");
+    const days = parseInt(daysStr, 10) || 30;
+    try {
+      const res = await extendUserVip(uid, days);
+      const expDate = res.expiresAt ? new Date(res.expiresAt).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }) : "-";
+      await sendMessage(chatId, `✅ VIP user <code>${uid}</code> berhasil diperpanjang <b>+${days} hari</b>!\n⏳ Aktif s/d: <b>${expDate}</b>`);
+      try {
+        await sendMessage(uid, `🎉 <b>Masa aktif VIP Anda telah diperpanjang oleh Admin!</b>\n\n➕ Tambahan durasi: <b>${days} Hari</b>\n⏳ Masa aktif baru: <b>${expDate}</b>`);
+      } catch {}
+      return renderVipUserDetail(chatId, messageId, uid);
+    } catch (e) {
+      await sendMessage(chatId, `❌ Gagal memperpanjang VIP: ${esc(e.message)}`);
+      return;
+    }
+  }
+
+  if (data.startsWith("admin_vip_life:")) {
+    const uid = data.split(":")[1];
+    try {
+      await activateUserVip({ userId: uid, lifetime: true, packageName: "VIP Lifetime (Admin)" });
+      await sendMessage(chatId, `✅ User <code>${uid}</code> sekarang resmi berstatus <b>VIP Lifetime (Selamanya) ♾️</b>!`);
+      try {
+        await sendMessage(uid, "🎉 <b>Selamat! Akun Anda telah diubah menjadi VIP Lifetime (Selamanya ♾️) oleh Admin.</b>");
+      } catch {}
+      return renderVipUserDetail(chatId, messageId, uid);
+    } catch (e) {
+      await sendMessage(chatId, `❌ Gagal mengubah ke lifetime: ${esc(e.message)}`);
+      return;
+    }
+  }
+
+  if (data.startsWith("admin_vip_revoke_ask:")) {
+    const uid = data.split(":")[1];
+    const textConfirm = `⚠️ <b>Konfirmasi Cabut VIP</b>\n\nApakah Anda yakin ingin mencabut status VIP untuk user <code>${esc(uid)}</code>?`;
+    const kb = [
+      [{ text: "🔴 Ya, Cabut VIP Sekarang", callback_data: `admin_vip_revoke_yes:${uid}` }],
+      [{ text: "🔙 Batal", callback_data: `admin_vip_detail:${uid}` }]
+    ];
+    await editMessage(chatId, messageId, textConfirm, { reply_markup: { inline_keyboard: kb } });
+    return;
+  }
+
+  if (data.startsWith("admin_vip_revoke_yes:")) {
+    const uid = data.split(":")[1];
+    try {
+      await revokeUserVip(uid);
+      await sendMessage(chatId, `✅ Status VIP untuk user <code>${uid}</code> berhasil dicabut.`);
+      try {
+        await sendMessage(uid, "ℹ️ Status lisensi VIP Anda telah dinonaktifkan oleh Admin.");
+      } catch {}
+      return renderVipUsersMenu(chatId, messageId, 1, "all");
+    } catch (e) {
+      await sendMessage(chatId, `❌ Gagal mencabut VIP: ${esc(e.message)}`);
+      return;
+    }
+  }
+
+  if (data.startsWith("admin_vip_change_pkg:")) {
+    const uid = data.split(":")[1];
+    return renderVipSelectPackageMenu(chatId, messageId, uid);
+  }
+
+  if (data.startsWith("vip_pick_pkg:")) {
+    const [, uid, pkgId] = data.split(":");
+    try {
+      const res = await activateUserVip({ userId: uid, packageId: pkgId });
+      const expStr = res.expiresAt ? new Date(res.expiresAt).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }) : "Selamanya ♾️";
+      await sendMessage(
+        chatId,
+        `✅ <b>VIP Berhasil Diaktifkan!</b>\n\n• User: <code>${uid}</code>\n• Paket: <b>${esc(res.user.warranty_package_name)}</b>\n• Masa Aktif: <b>${expStr}</b>\n• Limit Harian: <b>${res.user.warranty_daily_limit}x/hari</b>`
+      );
+      try {
+        await sendMessage(uid, `🎉 <b>Selamat! Akun Anda telah diaktifkan menjadi VIP oleh Admin.</b>\n\n📦 Paket: <b>${esc(res.user.warranty_package_name)}</b>\n⏳ Masa Aktif: <b>${expStr}</b>\n🔄 Limit Harian: <b>${res.user.warranty_daily_limit}x/hari</b>`);
+      } catch {}
+      return renderVipUserDetail(chatId, messageId, uid);
+    } catch (e) {
+      await sendMessage(chatId, `❌ Gagal aktivasi paket: ${esc(e.message)}`);
+      return;
+    }
+  }
+
+  if (data.startsWith("vip_pick_quick:")) {
+    const [, uid, qType] = data.split(":");
+    let days = 30;
+    let lifetime = false;
+    let name = "VIP 30 Hari";
+    if (qType === "7d") { days = 7; name = "VIP 7 Hari"; }
+    else if (qType === "30d") { days = 30; name = "VIP 30 Hari"; }
+    else if (qType === "90d") { days = 90; name = "VIP 90 Hari"; }
+    else if (qType === "lifetime") { lifetime = true; name = "VIP Lifetime"; }
+
+    try {
+      const res = await activateUserVip({ userId: uid, durationDays: days, lifetime, packageName: name });
+      const expStr = res.expiresAt ? new Date(res.expiresAt).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }) : "Selamanya ♾️";
+      await sendMessage(
+        chatId,
+        `✅ <b>VIP Berhasil Diaktifkan!</b>\n\n• User: <code>${uid}</code>\n• Paket: <b>${name}</b>\n• Masa Aktif: <b>${expStr}</b>`
+      );
+      try {
+        await sendMessage(uid, `🎉 <b>Selamat! Akun Anda telah diaktifkan menjadi VIP oleh Admin.</b>\n\n📦 Paket: <b>${name}</b>\n⏳ Masa Aktif: <b>${expStr}</b>`);
+      } catch {}
+      return renderVipUserDetail(chatId, messageId, uid);
+    } catch (e) {
+      await sendMessage(chatId, `❌ Gagal aktivasi VIP: ${esc(e.message)}`);
+      return;
+    }
+  }
+
+  if (data.startsWith("vip_pick_custom:")) {
+    const uid = data.split(":")[1];
+    await setAdminWizard(from.id, { action: "vip_act_custom_duration", targetUid: uid });
+    await sendMessage(
+      chatId,
+      [
+        `✏️ <b>Aktivasi VIP Custom untuk User <code>${uid}</code></b>`,
+        "",
+        "Masukkan durasi VIP:",
+        "• Contoh dalam hari: <code>30 hari</code>, <code>14 hari</code>, atau angka <code>60</code>",
+        "• Contoh dalam jam: <code>12 jam</code>, <code>24 jam</code>",
+        "• Atau ketik <code>lifetime</code> untuk selamanya",
+        "",
+        "/batal untuk membatalkan."
+      ].join("\n")
+    );
+    return;
+  }
   if (data === "admin_bridge") return renderBridgeMenu(chatId, messageId);
   if (data === "admin_workflow") return renderWorkflowMenu(chatId, messageId);
   if (data === "admin_packages") return renderPackagesMenu(chatId, messageId);

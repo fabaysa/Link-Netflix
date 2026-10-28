@@ -137,6 +137,12 @@ alter table if exists public.gemini_checker_users
   add column if not exists warranty_last_claim_date date default current_date,
   add column if not exists is_banned boolean not null default false;
 
+create index if not exists gemini_checker_users_warranty_idx
+  on public.gemini_checker_users(warranty_expires_at desc, warranty_lifetime);
+
+create index if not exists gemini_checker_users_username_idx
+  on public.gemini_checker_users(username);
+
 -- Packages table
 create table if not exists public.packages (
   id text primary key,
