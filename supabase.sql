@@ -135,7 +135,10 @@ alter table if exists public.gemini_checker_users
   add column if not exists warranty_daily_limit int not null default 5,
   add column if not exists warranty_claims_today int not null default 0,
   add column if not exists warranty_last_claim_date date default current_date,
-  add column if not exists is_banned boolean not null default false;
+  add column if not exists is_banned boolean not null default false,
+  add column if not exists last_account_cookies text,
+  add column if not exists last_account_country text,
+  add column if not exists last_account_saved_at timestamptz;
 
 create index if not exists gemini_checker_users_warranty_idx
   on public.gemini_checker_users(warranty_expires_at desc, warranty_lifetime);

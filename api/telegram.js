@@ -45,7 +45,8 @@ import {
   addTargetBot,
   updateTargetBot,
   setPrimaryTargetBot,
-  deleteTargetBot
+  deleteTargetBot,
+  getUserLastAccountCookies
 } from "../lib/store.js";
 import {
   startTelegramLogin,
@@ -1080,7 +1081,7 @@ async function handleRedeemCommand(chatId, from, rawCode) {
   }
 }
 
-async function handleAmbilToken(chatId, from) {
+async function handleAmbilToken(chatId, from, mode = null) {
   const isAdminUser = isAdmin(from?.id);
   const requireWarranty = await getSetting("require_warranty", true);
   const warranty = await checkUserWarranty(from?.id);
@@ -1138,9 +1139,73 @@ async function handleAmbilToken(chatId, from) {
     return;
   }
 
+  // Cek apakah ada cookies akun tersimpan untuk user ini
+  const lastAccount = await getUserLastAccountCookies(from?.id);
+
+  // Jika mode belum ditentukan, dan user punya cookies tersimpan, tampilkan pilihan singkat & bagus
+  if (!mode) {
+    if (lastAccount?.cookies) {
+      const region = lastAccount.country ? ` (${esc(lastAccount.country)})` : "";
+      const text = [
+        "🍿 <b>Pilihan Link Login Netflix</b>",
+        "",
+        `Akun sebelumnya masih tersimpan${region}.`,
+        "Pilih link yang ingin Anda generate:"
+      ].join("\n");
+
+      const keyboard = [
+        [
+          { text: "🔄 Akun Sama", callback_data: "ambil_akun_sama" },
+          { text: "✨ Akun Baru", callback_data: "ambil_akun_baru" }
+        ],
+        [{ text: "🔙 Kembali ke Menu", callback_data: "start" }]
+      ];
+
+      await sendMessage(chatId, text, {
+        reply_markup: { inline_keyboard: keyboard }
+      });
+      return;
+    }
+    mode = "baru";
+  }
+
+  if (mode === "sama") {
+    if (!lastAccount?.cookies) {
+      await sendMessage(
+        chatId,
+        "⚠️ <b>Belum ada akun tersimpan.</b>\nOtomatis mengambil akun Netflix baru..."
+      );
+      return handleAmbilToken(chatId, from, "baru");
+    }
+
+    const progress = await sendMessage(
+      chatId,
+      "⏳ <b>Memproses Akun Tersimpan...</b>\n\nSedang generate link login baru untuk akun yang sama..."
+    );
+
+    const job = await enqueueJob({
+      telegramUserId: from?.id,
+      chatId,
+      inputType: "text",
+      payload: lastAccount.cookies,
+      progressMessageId: progress.message_id,
+      debugMode: false
+    });
+
+    waitUntil(
+      kickBridgeWorker().catch((error) => {
+        console.error("kickBridgeWorker failed:", error);
+      })
+    );
+
+    console.log(`Queued same-account job ${job.id} for user ${from?.id}`);
+    return;
+  }
+
+  // mode === "baru"
   const progress = await sendMessage(
     chatId,
-    "⏳ <b>Permintaan diterima.</b>\n\nSedang memproses dan menghubungkan ke Netflix Generator..."
+    "⏳ <b>Permintaan diterima.</b>\n\nSedang mengambil akun Netflix baru..."
   );
 
   const job = await enqueueJob({
@@ -1979,8 +2044,9 @@ async function handleMessage(message) {
     return;
   }
 
-  if (/^\/(?:ambil|generate)(?:@\w+)?$/i.test(rawText)) {
-    await handleAmbilToken(chatId, from);
+  if (/^\/(?:ambil|generate)(?:@\w+)?(?:\s+(sama|baru))?$/i.test(rawText)) {
+    const match = rawText.match(/^\/(?:ambil|generate)(?:@\w+)?(?:\s+(sama|baru))?$/i);
+    await handleAmbilToken(chatId, from, match?.[1]?.toLowerCase() || null);
     return;
   }
 
@@ -2414,6 +2480,8 @@ async function handleCallbackQuery(callbackQuery) {
   // User actions
   if (data === "start") return sendStartMenu(chatId, from);
   if (data === "ambil" || data === "generate_cookie") return handleAmbilToken(chatId, from);
+  if (data === "ambil_akun_sama") return handleAmbilToken(chatId, from, "sama");
+  if (data === "ambil_akun_baru") return handleAmbilToken(chatId, from, "baru");
   if (data === "cek") return handleCek(chatId, from);
   if (data === "paket") return handlePaket(chatId);
   if (data === "redeem_info") return handleRedeemCommand(chatId, from, "");

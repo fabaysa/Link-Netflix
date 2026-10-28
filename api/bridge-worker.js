@@ -15,8 +15,10 @@ import {
   getSetting,
   getActiveTargetBots,
   isAdmin,
-  checkUserWarranty
+  checkUserWarranty,
+  saveUserLastAccountCookies
 } from "../lib/store.js";
+import { extractCookiesFromResult } from "../lib/bot-parser.js";
 import {
   claimJob,
   completeJob,
@@ -169,15 +171,13 @@ async function sendResultToUser(job, result) {
   // Jika hasil dari bridge otomatis memiliki PC/Mobile/TV URLs
   if (result.pcUrl || result.mobileUrl || result.tvUrl) {
     const html = buildNetflixResultHtml(result);
-    const extra = result.urlButtons?.length
-      ? { reply_markup: { inline_keyboard: result.urlButtons } }
-      : {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "🌐 Akses Website", url: "https://link-netflix.vercel.app" }]
-            ]
-          }
-        };
+    const buttons = result.urlButtons ? result.urlButtons.map((row) => [...row]) : [];
+    // Quick action buttons for same account or new account
+    buttons.push([
+      { text: "🔄 Ambil Link (Akun Sama)", callback_data: "ambil_akun_sama" },
+      { text: "✨ Ambil Akun Baru", callback_data: "ambil_akun_baru" }
+    ]);
+    const extra = { reply_markup: { inline_keyboard: buttons } };
 
     if (job.telegram_progress_message_id) {
       try {
@@ -198,8 +198,17 @@ async function sendResultToUser(job, result) {
 
   const plainText = buildReplyText(result);
   const html = buildReplyHtml(result);
-  const keyboard = telegramKeyboard(mergeButtons(result.messages));
-  const extra = keyboard ? { reply_markup: keyboard } : {};
+  const baseButtons = mergeButtons(result.messages);
+  const keyboard = telegramKeyboard(baseButtons) || { inline_keyboard: [] };
+  // Add quick actions if this is a success response with token
+  if (/nftoken=|berhasil/i.test(plainText) || /nftoken=/i.test(html)) {
+    keyboard.inline_keyboard = keyboard.inline_keyboard || [];
+    keyboard.inline_keyboard.push([
+      { text: "🔄 Ambil Link (Akun Sama)", callback_data: "ambil_akun_sama" },
+      { text: "✨ Ambil Akun Baru", callback_data: "ambil_akun_baru" }
+    ]);
+  }
+  const extra = keyboard.inline_keyboard?.length ? { reply_markup: keyboard } : {};
 
   // Pertahankan formatting Telegram target jika hasil masih muat dalam satu message.
   // Untuk output sangat panjang, fallback ke plain text chunk agar tag HTML tidak terpotong.
@@ -364,6 +373,16 @@ async function processOneJob(job) {
         }
       }
       if (!result && lastError) throw lastError;
+
+      // Simpan cookies dari hasil generator akun Netflix jika ada
+      const extractedCookies = extractCookiesFromResult(result);
+      if (extractedCookies && job.telegram_user_id) {
+        console.log(`[worker] Menyimpan cookies akun login untuk user ${job.telegram_user_id}`);
+        await saveUserLastAccountCookies(job.telegram_user_id, extractedCookies, {
+          country: result.country,
+          targetBot: successfulTarget
+        });
+      }
     } else {
       // ═══════════════════════════════════════════════════════════════════════
       // 🍪 2. FITUR GENERATE COOKIES (COOKIE TO LOGIN TOKEN RELAY)
@@ -393,6 +412,14 @@ async function processOneJob(job) {
         }
       }
       if (!result && lastError) throw lastError;
+
+      // Jika user mengirimkan cookies langsung atau dari alur akun sama, simpan cookies tersebut
+      if (job.telegram_user_id && payloadText && /NetflixId|\[\s*\{/i.test(payloadText)) {
+        console.log(`[worker] Menyimpan cookies akun relay untuk user ${job.telegram_user_id}`);
+        await saveUserLastAccountCookies(job.telegram_user_id, payloadText, {
+          targetBot: successfulTarget
+        });
+      }
     }
 
     const storedResult = {
@@ -402,6 +429,7 @@ async function processOneJob(job) {
       pcUrl: result.pcUrl || null,
       mobileUrl: result.mobileUrl || null,
       tvUrl: result.tvUrl || null,
+      cookies: extractCookiesFromResult(result) || (payloadText && /NetflixId|\[\s*\{/i.test(payloadText) ? payloadText : null),
       messages: result.messages || [],
       received_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
