@@ -18,7 +18,7 @@ import {
   checkUserWarranty,
   saveUserLastAccountCookies
 } from "../lib/store.js";
-import { extractCookiesFromResult } from "../lib/bot-parser.js";
+import { extractCookiesFromResult, parseBotReply } from "../lib/bot-parser.js";
 import {
   claimJob,
   completeJob,
@@ -375,7 +375,7 @@ async function processOneJob(job) {
       if (!result && lastError) throw lastError;
 
       // Simpan cookies dari hasil generator akun Netflix jika ada
-      const extractedCookies = extractCookiesFromResult(result);
+      const extractedCookies = result.cookies || extractCookiesFromResult(result);
       if (extractedCookies && job.telegram_user_id) {
         console.log(`[worker] Menyimpan cookies akun login untuk user ${job.telegram_user_id}`);
         await saveUserLastAccountCookies(job.telegram_user_id, extractedCookies, {
@@ -413,10 +413,19 @@ async function processOneJob(job) {
       }
       if (!result && lastError) throw lastError;
 
+      // Parse balasan bot relay untuk mengekstrak device URLs (PC, Mobile, TV) jika ada
+      const parsedReply = parseBotReply(result);
+      if (parsedReply?.success) {
+        result.pcUrl = result.pcUrl || parsedReply.pcUrl || null;
+        result.mobileUrl = result.mobileUrl || parsedReply.mobileUrl || null;
+        result.tvUrl = result.tvUrl || parsedReply.tvUrl || null;
+      }
+
       // Jika user mengirimkan cookies langsung atau dari alur akun sama, simpan cookies tersebut
-      if (job.telegram_user_id && payloadText && /NetflixId|\[\s*\{/i.test(payloadText)) {
+      const relayCookies = result.cookies || extractCookiesFromResult(result) || (payloadText && /NetflixId|\[\s*\{/i.test(payloadText) ? payloadText : null);
+      if (job.telegram_user_id && relayCookies) {
         console.log(`[worker] Menyimpan cookies akun relay untuk user ${job.telegram_user_id}`);
-        await saveUserLastAccountCookies(job.telegram_user_id, payloadText, {
+        await saveUserLastAccountCookies(job.telegram_user_id, relayCookies, {
           targetBot: successfulTarget
         });
       }
@@ -429,7 +438,7 @@ async function processOneJob(job) {
       pcUrl: result.pcUrl || null,
       mobileUrl: result.mobileUrl || null,
       tvUrl: result.tvUrl || null,
-      cookies: extractCookiesFromResult(result) || (payloadText && /NetflixId|\[\s*\{/i.test(payloadText) ? payloadText : null),
+      cookies: result.cookies || extractCookiesFromResult(result) || (payloadText && /NetflixId|\[\s*\{/i.test(payloadText) ? payloadText : null),
       messages: result.messages || [],
       received_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()

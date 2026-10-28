@@ -36,7 +36,18 @@ test("extractCookiesFromText: should parse various cookie formats correctly", ()
   assert.ok(extractedString.includes("NetflixId="));
   assert.ok(extractedString.includes("SecureNetflixId="));
 
-  // 4. Return null if no cookies present
+  // 4. Netscape format (tab separated file format from cookies.txt)
+  const netscapeCookies = [
+    "# Netscape HTTP Cookie File",
+    ".netflix.com\tTRUE\t/\tTRUE\t1798000000\tNetflixId\tv%3D3%26ct%3DBQAOAAE",
+    ".netflix.com\tTRUE\t/\tTRUE\t1798000000\tSecureNetflixId\tv%3D3%26mac%3DAQE"
+  ].join("\n");
+  const extractedNetscape = extractCookiesFromText(netscapeCookies);
+  assert.ok(extractedNetscape, "Netscape cookie format harus berhasil diekstrak");
+  assert.ok(extractedNetscape.includes("NetflixId"));
+  assert.ok(extractedNetscape.includes("SecureNetflixId"));
+
+  // 5. Return null if no cookies present
   const plainText = "Ini pesan tanpa cookies sama sekali. Silakan coba lagi.";
   assert.equal(extractCookiesFromText(plainText), null);
 });
