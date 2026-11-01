@@ -107,10 +107,10 @@ function transformReplyText(text) {
   out = out.replace(
     /⚠️\s*Penting:.*?Pake link.*?\n[\s\S]*?generate.* lagi aja\./i,
     [
-      "⚠️ Perhatian: Gunakan link sebelum waktu kedaluwarsa yang tertera.",
-      "📱 Buka link pada perangkat yang sesuai sebelum masa berlakunya habis.",
-      "🏠 Ketik /start untuk kembali ke menu utama.",
-      "🔄 Jika link sudah kedaluwarsa, lakukan generate ulang."
+      "⏱️ <b>Masa Berlaku URL Login:</b>",
+      "URL login hanya bertahan <b>1 jam</b> sejak link ini Anda terima. Segera buka pada browser perangkat Anda untuk login otomatis.",
+      "💡 <i>(Setelah login berhasil di Netflix, sesi tontonan di perangkat Anda akan tetap aktif normal).</i>",
+      "🔄 <i>Jika link kedaluwarsa sebelum sempat dipakai, silakan lakukan generate ulang.</i>"
     ].join("\n")
   );
 
@@ -156,7 +156,11 @@ function buildNetflixResultHtml(result) {
     result.pcUrl ? `🖥️ <b>PC / Laptop:</b>\n<a href="${esc(result.pcUrl)}">${esc(result.pcUrl)}</a>\n` : "",
     result.mobileUrl ? `📱 <b>HP / Mobile:</b>\n<a href="${esc(result.mobileUrl)}">${esc(result.mobileUrl)}</a>\n` : "",
     result.tvUrl ? `📺 <b>TV / Smart TV:</b>\n<a href="${esc(result.tvUrl)}">${esc(result.tvUrl)}</a>\n` : "",
-    "⚠️ <i>Gunakan link sebelum kedaluwarsa.</i>",
+    "⏱️ <b>Masa Berlaku URL Login:</b>",
+    "URL login di atas hanya bertahan <b>1 jam</b> sejak link ini Anda terima. Segera buka link pada browser perangkat untuk login otomatis.",
+    "💡 <i>(Setelah login berhasil di Netflix, sesi menonton di perangkat Anda akan tetap aktif normal).</i>",
+    "🔄 <i>Jika link kedaluwarsa sebelum sempat dipakai, silakan klaim/generate link baru.</i>",
+    "",
     brandingFooterHtml()
   ].filter(Boolean);
 

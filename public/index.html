@@ -566,6 +566,73 @@
     .btn-copy:hover { background: rgba(255, 255, 255, 0.15); border-color: #4b5563; }
     .btn-copy.copied { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.4); }
 
+    .device-expiry-pill {
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 9999px;
+      background: rgba(245, 158, 11, 0.12);
+      color: #fcd34d;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Expiry Notice Card */
+    .expiry-notice-card {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(229, 9, 20, 0.04) 100%);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      margin-bottom: 20px;
+    }
+
+    .expiry-notice-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: #fcd34d;
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .expiry-notice-content p {
+      font-size: 0.88rem;
+      color: var(--text-main);
+      line-height: 1.55;
+      margin-bottom: 10px;
+    }
+
+    .expiry-notice-tips {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      border-top: 1px dashed rgba(245, 158, 11, 0.25);
+      padding-top: 10px;
+    }
+
+    .expiry-tip-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.83rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .expiry-tip-item b {
+      color: #f3f4f6;
+    }
+
+    .tip-dot {
+      color: #10b981;
+      font-weight: 800;
+      font-size: 0.85rem;
+      line-height: 1.3;
+    }
+
     /* Error Card */
     .error-card {
       background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.05));
@@ -1094,6 +1161,17 @@
           Tidak perlu! Kode yang Anda masukkan otomatis disimpan di memori browser (LocalStorage). Saat Anda membuka web ini lagi, kode sudah otomatis terisi dan siap diklaim.
         </div>
       </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>Berapa lama masa aktif URL login Netflix yang saya terima?</span>
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          URL login Netflix hanya bertahan selama <b>1 jam</b> sejak URL diterima. Pastikan Anda segera membuka atau menyalin link tersebut ke perangkat Anda (PC, HP, atau Smart TV) dalam waktu 1 jam agar otomatis login ke akun Netflix.<br><br>
+          💡 <b>Penting Dipahami:</b> Batas waktu 1 jam ini <b>hanya untuk link login</b> saja. Setelah Anda berhasil masuk ke akun Netflix di browser atau TV Anda, sesi tontonan Netflix Anda akan <b>tetap aktif normal</b> (tidak akan logout otomatis setelah 1 jam). Jika link kedaluwarsa sebelum sempat Anda buka, Anda cukup menekan tombol klaim/ambil akun lagi untuk mendapatkan link baru yang aktif.
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1504,6 +1582,7 @@
                 <span>${dev.icon || '📱'}</span>
                 <span>${dev.label}</span>
               </div>
+              <span class="device-expiry-pill">⏱️ Berlaku 1 Jam</span>
             </div>
             <div class="device-url-wrap">
               <span class="device-url-text" title="${safeUrl}">${safeUrl}</span>
@@ -1533,7 +1612,7 @@
               <div class="success-icon-badge">🍿</div>
               <div>
                 <div class="success-title">Link Login Netflix Siap Digunakan!</div>
-                <div style="font-size: 0.85rem; color: var(--text-muted);">Pilih link sesuai perangkat yang Anda gunakan:</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">Pilih link perangkat di bawah ini (Link aktif 1 jam sejak diterima):</div>
               </div>
             </div>
             ${countryBadge}
@@ -1541,6 +1620,28 @@
 
           <div class="devices-grid">
             ${devicesHtml}
+          </div>
+
+          <div class="expiry-notice-card">
+            <div class="expiry-notice-badge">
+              <span>⏱️</span>
+              <span>Masa Berlaku URL Login: 1 Jam Sejak Diterima</span>
+            </div>
+            <div class="expiry-notice-content">
+              <p>
+                <b>Penting:</b> URL untuk login Netflix di atas memiliki batas waktu aktif selama <b>1 jam</b> sejak link ini Anda terima. Segera klik tombol <b>🌐 Buka</b> atau salin link ke browser perangkat Anda (PC, HP, atau Smart TV) dalam kurun waktu 1 jam agar otomatis masuk ke akun Netflix.
+              </p>
+              <div class="expiry-notice-tips">
+                <div class="expiry-tip-item">
+                  <span class="tip-dot">✓</span>
+                  <span><b>Sesi Login Tetap Aman:</b> Batas 1 jam ini hanya berlaku untuk link login. Begitu Anda sudah berhasil masuk ke Netflix di browser atau TV, sesi tontonan Anda akan tetap aktif normal (tidak akan logout setelah 1 jam).</span>
+                </div>
+                <div class="expiry-tip-item">
+                  <span class="tip-dot">✓</span>
+                  <span><b>Jika Terlanjur Kedaluwarsa:</b> Jangan khawatir, jika link melewati batas 1 jam sebelum sempat dibuka, Anda cukup klik tombol <b>Ambil Akun Baru</b> atau <b>Ambil Akun Sama</b> untuk membuat link login yang baru.</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -1771,6 +1872,7 @@
           <div class="device-card">
             <div class="device-top">
               <div class="device-name"><span>${dev.icon || '📱'}</span><span>${dev.label}</span></div>
+              <span class="device-expiry-pill">⏱️ Berlaku 1 Jam</span>
             </div>
             <div class="device-url-wrap"><span class="device-url-text">${safeUrl}</span></div>
             <div class="device-actions">
@@ -1788,11 +1890,33 @@
               <div class="success-icon-badge">✅</div>
               <div>
                 <div class="success-title">Token Berhasil Digenerate!</div>
-                <div style="font-size:0.85rem; color:var(--text-muted);">Gunakan link sebelum kedaluwarsa</div>
+                <div style="font-size:0.85rem; color:var(--text-muted);">Pilih link perangkat di bawah ini (Link aktif 1 jam sejak diterima)</div>
               </div>
             </div>
           </div>
           <div class="devices-grid">${devicesHtml}</div>
+
+          <div class="expiry-notice-card">
+            <div class="expiry-notice-badge">
+              <span>⏱️</span>
+              <span>Masa Berlaku URL Login: 1 Jam Sejak Diterima</span>
+            </div>
+            <div class="expiry-notice-content">
+              <p>
+                <b>Penting:</b> URL untuk login di atas hanya bertahan selama <b>1 jam</b> sejak diterima. Segera klik tombol <b>🌐 Buka</b> atau tempel link pada browser perangkat Anda untuk masuk ke Netflix.
+              </p>
+              <div class="expiry-notice-tips">
+                <div class="expiry-tip-item">
+                  <span class="tip-dot">✓</span>
+                  <span><b>Sesi Login Tetap Aman:</b> Begitu Anda berhasil masuk di Netflix, sesi tontonan Anda di perangkat tersebut akan tetap aktif normal.</span>
+                </div>
+                <div class="expiry-tip-item">
+                  <span class="tip-dot">✓</span>
+                  <span><b>Jika Kedaluwarsa:</b> Jika melewati batas 1 jam sebelum sempat dibuka, cukup convert ulang cookies fresh Anda.</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       `;
       cookieResultSection.style.display = "block";
