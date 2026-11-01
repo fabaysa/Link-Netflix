@@ -24,8 +24,12 @@ Modul ShopeePay dihilangkan sepenuhnya sehingga sistem berjalan 100% serverless 
   - Ubah target bot username (`/settarget SSNetflixBot`).
   - Toggle wajib garansi (`/toggle_garansi`).
   - Broadcast pengumuman ke seluruh pengguna (`/broadcast`).
-- 🌐 **Web Portal SPA**:
-  - Antarmuka web modern untuk generate token, cek status job realtime, dan akses link perangkat.
+- 🌐 **Web Portal Terpadu (SPA)**:
+  - 🍿 **Klaim Garansi / Ambil Token Netflix Otomatis**: Cukup masukkan kode voucher/lisensi, sistem memverifikasi masa aktif & sisa kuota hari ini, lalu langsung mengambil akun/link Netflix baru atau akun yang sama.
+  - 🎟️ **Redeem Voucher di Web**: Aktivasi kode voucher paket langsung dari web tanpa perlu membuka Telegram.
+  - 💾 **Auto-Save Kode**: Kode lisensi otomatis tersimpan di LocalStorage browser untuk klaim harian cepat.
+  - 🖥️ 📱 📺 **Multi-Device Link Access**: Akses 1-klik buka dan salin link instan untuk PC/Laptop, HP/Mobile, dan Smart TV.
+  - 🍪 **Generator Cookies Manual**: Mendukung konversi cookies manual ke link login multi-device.
 
 ---
 

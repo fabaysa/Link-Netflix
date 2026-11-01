@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Netflix Token Generator — Web Portal</title>
-  <meta name="description" content="Generate link login Netflix instant untuk PC, HP, dan TV menggunakan antrian Supabase dan Telegram Userbot." />
+  <title>iLink Netflix Portal — Klaim Garansi & Token Generator</title>
+  <meta name="description" content="Portal Klaim Garansi, Ambil Link Netflix Otomatis (PC/HP/TV), Redeem Voucher, dan Generator Cookies." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -51,7 +51,7 @@
 
     .container {
       width: 100%;
-      max-width: 860px;
+      max-width: 880px;
       margin: 0 auto;
       padding: 32px 20px 60px;
       flex: 1;
@@ -60,7 +60,7 @@
     /* Header */
     header {
       text-align: center;
-      margin-bottom: 36px;
+      margin-bottom: 28px;
     }
 
     .brand-badge {
@@ -76,7 +76,7 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .status-dot {
@@ -94,11 +94,11 @@
     }
 
     h1 {
-      font-size: clamp(1.85rem, 4vw, 2.6rem);
+      font-size: clamp(1.85rem, 4vw, 2.5rem);
       font-weight: 800;
       letter-spacing: -0.02em;
       color: #fff;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     h1 span {
@@ -109,9 +109,60 @@
 
     .subtitle {
       color: var(--text-muted);
-      font-size: 1rem;
-      max-width: 600px;
+      font-size: 0.98rem;
+      max-width: 620px;
       margin: 0 auto;
+    }
+
+    /* Tabs Navigation */
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 6px;
+      border-radius: var(--radius);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 14px;
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      background: var(--primary);
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-content.active {
+      display: block;
     }
 
     /* Card */
@@ -119,7 +170,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 28px;
+      padding: 26px;
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
       margin-bottom: 24px;
       position: relative;
@@ -145,7 +196,7 @@
       gap: 10px;
     }
 
-    /* Form */
+    /* Form Inputs */
     .form-group {
       margin-bottom: 18px;
     }
@@ -157,18 +208,30 @@
       font-weight: 600;
       font-size: 0.92rem;
       color: var(--text-main);
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
-    .char-count {
-      font-size: 0.8rem;
-      color: var(--text-dim);
-      font-weight: 400;
+    .text-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-main);
+      padding: 13px 16px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: var(--transition);
+    }
+
+    .text-input:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 4px var(--primary-glow);
     }
 
     textarea {
       width: 100%;
-      height: 160px;
+      height: 150px;
       background: var(--bg-input);
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -187,8 +250,10 @@
       box-shadow: 0 0 0 4px var(--primary-glow);
     }
 
-    textarea::placeholder {
+    .char-count {
+      font-size: 0.8rem;
       color: var(--text-dim);
+      font-weight: 400;
     }
 
     .toolbar {
@@ -198,12 +263,6 @@
       align-items: center;
       gap: 10px;
       margin-top: 10px;
-    }
-
-    .toolbar-left, .toolbar-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
     }
 
     /* Buttons */
@@ -235,10 +294,6 @@
       box-shadow: 0 6px 22px rgba(229, 9, 20, 0.4);
     }
 
-    .btn-primary:active:not(:disabled) {
-      transform: translateY(0);
-    }
-
     .btn-primary:disabled {
       opacity: 0.6;
       cursor: not-allowed;
@@ -251,15 +306,14 @@
       border: 1px solid var(--border);
     }
 
-    .btn-secondary:hover {
+    .btn-secondary:hover:not(:disabled) {
       background: rgba(255, 255, 255, 0.1);
       border-color: #3b4256;
     }
 
-    .btn-sm {
-      padding: 7px 12px;
-      font-size: 0.82rem;
-      border-radius: var(--radius-sm);
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .btn-success {
@@ -271,11 +325,72 @@
       background: rgba(16, 185, 129, 0.25);
     }
 
+    .btn-sm {
+      padding: 7px 12px;
+      font-size: 0.82rem;
+      border-radius: var(--radius-sm);
+    }
+
     .btn-full {
       width: 100%;
       margin-top: 14px;
       padding: 14px;
+      font-size: 1rem;
+    }
+
+    /* Status Badges & Stats */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .status-badge.warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border-color: rgba(245, 158, 11, 0.35);
+    }
+
+    .status-badge.danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+
+    .grid-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .stat-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+    }
+
+    .stat-label {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+
+    .stat-val {
       font-size: 1.05rem;
+      font-weight: 800;
+      color: #fff;
     }
 
     /* Stepper / Progress Card */
@@ -337,52 +452,26 @@
       color: #fff;
     }
 
-    .step-text {
-      flex: 1;
-    }
+    .step-text { flex: 1; }
+    .step-title { font-size: 0.95rem; font-weight: 600; color: var(--text-main); }
+    .step-desc { font-size: 0.8rem; color: var(--text-dim); }
+    .step-item.active .step-title { color: #fff; }
+    .step-status { font-size: 0.8rem; font-weight: 600; color: var(--text-dim); }
+    .step-item.active .step-status { color: #ff5252; }
+    .step-item.done .step-status { color: #34d399; }
 
-    .step-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .step-desc {
-      font-size: 0.8rem;
-      color: var(--text-dim);
-    }
-
-    .step-item.active .step-title {
-      color: #fff;
-    }
-
-    .step-status {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text-dim);
-    }
-
-    .step-item.active .step-status {
-      color: #ff5252;
-    }
-
-    .step-item.done .step-status {
-      color: #34d399;
-    }
-
-    /* Result Section */
+    /* Results */
     .result-section {
       display: none;
       animation: fadeIn 0.4s ease;
     }
 
-    /* Success Card */
     .success-header {
       background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
       border: 1px solid rgba(16, 185, 129, 0.35);
       border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 24px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -415,32 +504,18 @@
       color: #fff;
     }
 
-    .expired-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 6px 14px;
-      border-radius: 9999px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #fcd34d;
-    }
-
-    /* Device Cards */
     .devices-grid {
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      margin-bottom: 24px;
+      gap: 14px;
+      margin-bottom: 20px;
     }
 
     .device-card {
       background: var(--bg-card-hover);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 18px 20px;
+      padding: 16px 18px;
       transition: var(--transition);
     }
 
@@ -453,11 +528,11 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .device-name {
-      font-size: 1rem;
+      font-size: 0.98rem;
       font-weight: 700;
       display: flex;
       align-items: center;
@@ -492,154 +567,109 @@
       gap: 10px;
     }
 
-    .btn-open {
-      background: #e50914;
-      color: #fff;
-    }
-    .btn-open:hover {
-      background: #f40612;
-    }
+    .btn-open { background: #e50914; color: #fff; }
+    .btn-open:hover { background: #f40612; }
+    .btn-copy { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid var(--border); }
+    .btn-copy:hover { background: rgba(255, 255, 255, 0.15); border-color: #4b5563; }
+    .btn-copy.copied { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.4); }
 
-    .btn-copy {
-      background: rgba(255, 255, 255, 0.08);
-      color: #fff;
-      border: 1px solid var(--border);
-    }
-    .btn-copy:hover {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: #4b5563;
-    }
-    .btn-copy.copied {
-      background: rgba(16, 185, 129, 0.2);
-      color: #34d399;
-      border-color: rgba(16, 185, 129, 0.4);
-    }
-
-    /* Notes box */
-    .notes-box {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px dashed var(--border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      margin-bottom: 20px;
-    }
-
-    .notes-box h4 {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-
-    .notes-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      font-size: 0.86rem;
-      color: var(--text-muted);
-    }
-
-    .notes-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    /* Error / Expired Card */
+    /* Error Card */
     .error-card {
       background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.05));
       border: 1px solid rgba(239, 68, 68, 0.35);
       border-radius: var(--radius);
-      padding: 24px;
-      margin-bottom: 24px;
+      padding: 22px;
+      margin-bottom: 20px;
     }
 
     .error-header {
       display: flex;
       align-items: flex-start;
       gap: 14px;
-      margin-bottom: 18px;
+      margin-bottom: 14px;
     }
 
     .error-icon-badge {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       background: rgba(239, 68, 68, 0.2);
       color: #ef4444;
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.4rem;
+      font-size: 1.3rem;
       flex-shrink: 0;
       border: 1px solid rgba(239, 68, 68, 0.4);
     }
 
     .error-title {
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 800;
       color: #fca5a5;
       margin-bottom: 4px;
     }
 
     .error-desc {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: var(--text-muted);
     }
 
-    .causes-box {
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      border-radius: var(--radius-sm);
-      padding: 16px;
-      margin-bottom: 18px;
+    /* Packages Grid */
+    .packages-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
     }
 
-    .causes-title {
-      font-size: 0.88rem;
+    .pkg-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      transition: var(--transition);
+    }
+
+    .pkg-card:hover {
+      border-color: rgba(229, 9, 20, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .pkg-title {
+      font-size: 1.1rem;
       font-weight: 700;
-      color: #f87171;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      color: #fff;
     }
 
-    .causes-list {
+    .pkg-price {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #ff4b55;
+      margin-bottom: 12px;
+    }
+
+    .pkg-features {
       list-style: none;
+      font-size: 0.85rem;
+      color: var(--text-muted);
       display: flex;
       flex-direction: column;
       gap: 6px;
-      font-size: 0.88rem;
-      color: var(--text-main);
+      margin-bottom: 16px;
+      flex: 1;
     }
 
-    .causes-list li {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .causes-list li::before {
-      content: "•";
-      color: #ef4444;
+    .pkg-features li::before {
+      content: "✓ ";
+      color: #10b981;
       font-weight: bold;
-      font-size: 1.2rem;
-      line-height: 1;
     }
 
-    .error-solution {
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      border-radius: var(--radius-sm);
-      padding: 12px 16px;
-      font-size: 0.9rem;
-      color: #fcd34d;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 18px;
-    }
-
-    /* Accordion FAQ */
+    /* FAQ */
     .faq-section {
       margin-top: 36px;
     }
@@ -672,9 +702,7 @@
       user-select: none;
     }
 
-    .faq-question:hover {
-      background: var(--bg-card-hover);
-    }
+    .faq-question:hover { background: var(--bg-card-hover); }
 
     .faq-answer {
       padding: 0 18px 14px;
@@ -684,69 +712,11 @@
       line-height: 1.6;
     }
 
-    .faq-item.open .faq-answer {
-      display: block;
-    }
+    .faq-item.open .faq-answer { display: block; }
+    .faq-item.open .faq-arrow { transform: rotate(180deg); }
+    .faq-arrow { transition: var(--transition); font-size: 0.8rem; color: var(--text-dim); }
 
-    .faq-item.open .faq-arrow {
-      transform: rotate(180deg);
-    }
-
-    .faq-arrow {
-      transition: var(--transition);
-      font-size: 0.8rem;
-      color: var(--text-dim);
-    }
-
-    /* Raw Output Collapsible */
-    .raw-toggle {
-      font-size: 0.82rem;
-      color: var(--text-dim);
-      cursor: pointer;
-      text-decoration: underline;
-      margin-top: 10px;
-      display: inline-block;
-    }
-
-    .raw-box {
-      display: none;
-      margin-top: 10px;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      padding: 12px;
-      border-radius: var(--radius-sm);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      white-space: pre-wrap;
-      word-break: break-all;
-      color: var(--text-dim);
-    }
-
-    /* Footer */
-    footer {
-      text-align: center;
-      padding: 24px 20px;
-      font-size: 0.82rem;
-      color: var(--text-dim);
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    footer a {
-      color: var(--text-muted);
-      text-decoration: none;
-    }
-
-    footer a:hover {
-      color: var(--primary);
-    }
-
-    /* Animations */
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Toast Notification */
+    /* Toast */
     .toast {
       position: fixed;
       bottom: 28px;
@@ -774,12 +744,28 @@
       opacity: 1;
     }
 
-    /* Responsive */
+    footer {
+      text-align: center;
+      padding: 24px 20px;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: var(--primary); }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     @media (max-width: 640px) {
       .container { padding: 20px 14px 40px; }
       .card { padding: 20px 16px; }
       .device-actions { grid-template-columns: 1fr; }
       .success-header { flex-direction: column; align-items: flex-start; }
+      .tabs-nav { flex-wrap: nowrap; }
     }
   </style>
 </head>
@@ -788,138 +774,402 @@
   <div class="container">
     <!-- Header -->
     <header>
-      <h1>🍪 <span>Netflix Token Generator</span></h1>
+      <div class="brand-badge">
+        <span class="status-dot"></span>
+        <span>iLink Netflix Portal v5.6</span>
+      </div>
+      <h1>🍿 <span>Netflix Token & Garansi</span></h1>
       <p class="subtitle">
-        Tempelkan cookies Netflix Anda untuk membuat link login instan bagi PC / Laptop, HP / Mobile, dan Smart TV secara otomatis.
+        Klaim link login Netflix instan (PC, HP, Smart TV), redeem voucher garansi, dan kelola akun secara otomatis.
       </p>
     </header>
 
-    <!-- Main Generator Form Card -->
-    <div class="card" id="formCard">
-      <div class="card-title">
-        <span>🗝️ Input Cookies Netflix</span>
-      </div>
-
-      <div class="form-group">
-        <label for="cookieInput">
-          <span>Kirim / Paste Cookies:</span>
-          <span class="char-count" id="charCount">0 / 4000 karakter</span>
-        </label>
-        <textarea
-          id="cookieInput"
-          placeholder="Paste cookies Netflix kamu di sini...&#10;Contoh:&#10;[{&quot;name&quot;:&quot;NetflixId&quot;,&quot;value&quot;:&quot;...&quot;}] atau string cookie format netflix"
-          autocomplete="off"
-          spellcheck="false"
-        ></textarea>
-        
-        <div class="toolbar">
-          <div class="toolbar-left">
-            <button class="btn btn-secondary btn-sm" id="btnPaste" type="button">
-              📋 Tempel Clipboard
-            </button>
-            <button class="btn btn-secondary btn-sm" id="btnClear" type="button">
-              🧹 Hapus
-            </button>
-          </div>
-          <div class="toolbar-right">
-            <button class="btn btn-secondary btn-sm" id="btnSample" type="button">
-              💡 Format Info
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <button class="btn btn-primary btn-full" id="btnSubmit" type="button">
-        <span id="btnIcon">🚀</span>
-        <span id="btnText">Generate Netflix Link</span>
+    <!-- Navigation Tabs -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" data-tab="tabClaim" id="tabBtnClaim" type="button">
+        🍿 Klaim Token / Garansi
+      </button>
+      <button class="tab-btn" data-tab="tabRedeem" id="tabBtnRedeem" type="button">
+        🎟️ Redeem Voucher
+      </button>
+      <button class="tab-btn" data-tab="tabCookies" id="tabBtnCookies" type="button">
+        🍪 Generator Cookies
+      </button>
+      <button class="tab-btn" data-tab="tabPackages" id="tabBtnPackages" type="button">
+        📦 Daftar Paket
       </button>
     </div>
 
-    <!-- Live Stepper / Progress Tracking Card -->
-    <div class="card progress-card" id="progressCard">
-      <div class="card-title">
-        <span>⚡ Sedang Memproses Token...</span>
-        <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-dim); margin-left: auto;" id="timerText">0s</span>
+    <!-- ========================================== -->
+    <!-- TAB 1: KLAIM TOKEN / GARANSI (FITUR UTAMA)  -->
+    <!-- ========================================== -->
+    <div class="tab-content active" id="tabClaim">
+      <div class="card" id="claimCard">
+        <div class="card-title">
+          <span>🛡️ Klaim Garansi / Ambil Link Netflix</span>
+        </div>
+
+        <div class="form-group">
+          <label for="claimCodeInput">
+            <span>Masukkan Kode Lisensi / Voucher:</span>
+            <span style="font-size:0.8rem; color:#10b981;" id="savedBadge"></span>
+          </label>
+          <div style="display:flex; gap:10px;">
+            <input
+              type="text"
+              id="claimCodeInput"
+              class="text-input"
+              placeholder="Contoh: NETFLIX-ABCD-1234 atau ID Telegram Anda"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button class="btn btn-secondary" id="btnCheckCode" type="button" style="white-space:nowrap;">
+              🔍 Cek Status
+            </button>
+          </div>
+          <small style="color:var(--text-dim); display:block; margin-top:6px; font-size:0.8rem;">
+            💡 Cukup masukkan kode voucher/lisensi Anda sekali. Kode akan otomatis tersimpan di browser untuk klaim harian berikutnya.
+          </small>
+        </div>
+
+        <!-- Panel Status Lisensi (Muncul saat kode diverifikasi) -->
+        <div id="licenseStatusPanel" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="status-badge" id="vipBadge">✅ VIP Aktif</span>
+              <span style="font-weight:700; color:#fff;" id="statusName">Pemegang Lisensi</span>
+            </div>
+            <div id="statusExpTag" style="font-size:0.85rem; color:var(--text-muted);">
+              Aktif s/d: <b id="statusExpiry" style="color:#fff;">-</b>
+            </div>
+          </div>
+
+          <div class="grid-stats">
+            <div class="stat-box">
+              <div class="stat-label">📦 Paket Garansi</div>
+              <div class="stat-val" id="statPackage">-</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">📊 Penggunaan Hari Ini</div>
+              <div class="stat-val" id="statToday">-</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">🎯 Sisa Kuota Hari Ini</div>
+              <div class="stat-val" id="statRemaining" style="color:#10b981;">-</div>
+            </div>
+          </div>
+
+          <!-- Alert jika ada cookies akun tersimpan -->
+          <div id="savedAccountBox" style="display:none; margin-top:14px; padding:10px 14px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.25); border-radius:var(--radius-sm); font-size:0.85rem; color:#fcd34d;">
+            💾 <b>Akun Sebelumnya Masih Tersimpan (<span id="savedAccountCountry">ID</span>):</b> Anda dapat memilih untuk memperpanjang link pada akun yang sama atau mengambil akun baru.
+          </div>
+
+          <!-- Alert jika voucher belum di-redeem -->
+          <div id="unredeemedAlertBox" style="display:none; margin-top:14px; padding:12px 14px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); border-radius:var(--radius-sm); font-size:0.88rem; color:#34d399;">
+            🎟️ <b>Voucher Belum Diaktifkan:</b> Voucher valid (<span id="unredeemedPkgName">Paket</span>). Klik tombol di bawah untuk langsung mengaktifkan dan mengambil link login!
+          </div>
+
+          <!-- Tombol Aksi Klaim -->
+          <div class="claim-actions" style="display:flex; gap:12px; margin-top:20px; flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btnClaimNew" type="button" style="flex:1;">
+              <span>✨ Ambil Akun Baru</span>
+            </button>
+            <button class="btn btn-secondary" id="btnClaimSame" type="button" style="flex:1;" disabled>
+              <span>🔄 Ambil Akun Sama</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div class="stepper">
-        <div class="step-item" id="step1">
-          <div class="step-icon">1</div>
-          <div class="step-text">
-            <div class="step-title">Memverifikasi Format & Sesi Cookie</div>
-            <div class="step-desc">Memeriksa struktur autentikasi dan validitas sesi akun</div>
-          </div>
-          <div class="step-status" id="step1Status">Menunggu</div>
+      <!-- Live Stepper Card for Claim -->
+      <div class="card progress-card" id="claimProgressCard">
+        <div class="card-title">
+          <span>⚡ Sedang Memproses Link Netflix...</span>
+          <span style="font-size:0.85rem; font-weight:400; color:var(--text-dim); margin-left:auto;" id="claimTimerText">0s</span>
         </div>
 
-        <div class="step-item" id="step2">
-          <div class="step-icon">2</div>
-          <div class="step-text">
-            <div class="step-title">Memproses Token Login Otomatis</div>
-            <div class="step-desc">Menghubungkan ke sistem otorisasi dan enkripsi sesi</div>
+        <div class="stepper">
+          <div class="step-item" id="claimStep1">
+            <div class="step-icon">1</div>
+            <div class="step-text">
+              <div class="step-title">Verifikasi Lisensi & Kuota Klaim</div>
+              <div class="step-desc">Memeriksa masa berlaku dan batas harian akun</div>
+            </div>
+            <div class="step-status" id="claimStep1Status">Menunggu</div>
           </div>
-          <div class="step-status" id="step2Status">Menunggu</div>
+
+          <div class="step-item" id="claimStep2">
+            <div class="step-icon">2</div>
+            <div class="step-text">
+              <div class="step-title">Menghubungkan ke Bot Server</div>
+              <div class="step-desc">Pencarian negara prioritas (ID, MY, SG) dan konfirmasi status</div>
+            </div>
+            <div class="step-status" id="claimStep2Status">Menunggu</div>
+          </div>
+
+          <div class="step-item" id="claimStep3">
+            <div class="step-icon">3</div>
+            <div class="step-text">
+              <div class="step-title">Generate Multi-Device Login Links</div>
+              <div class="step-desc">Membuat tautan akses aman untuk PC, HP, dan Smart TV</div>
+            </div>
+            <div class="step-status" id="claimStep3Status">Menunggu</div>
+          </div>
         </div>
 
-        <div class="step-item" id="step3">
-          <div class="step-icon">3</div>
-          <div class="step-text">
-            <div class="step-title">Generate URL Multi-Device</div>
-            <div class="step-desc">Membuat tautan akses instan untuk PC, HP, dan Smart TV</div>
+        <p style="font-size:0.82rem; color:var(--text-dim); text-align:center;">
+          🔒 Sesi diamankan otomatis. Link siap dibuka langsung di browser perangkat Anda.
+        </p>
+      </div>
+
+      <!-- Hasil Klaim -->
+      <div class="result-section" id="claimResultSection">
+        <div id="claimResultContent"></div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: REDEEM VOUCHER                       -->
+    <!-- ========================================== -->
+    <div class="tab-content" id="tabRedeem">
+      <div class="card">
+        <div class="card-title">
+          <span>🎟️ Aktivasi / Redeem Voucher Garansi</span>
+        </div>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:18px;">
+          Punya kode voucher dari Admin? Masukkan kodenya di bawah untuk mengaktifkan masa garansi dan kuota klaim harian Anda.
+        </p>
+
+        <div class="form-group">
+          <label for="redeemCodeInput">
+            <span>Kode Voucher:</span>
+          </label>
+          <input
+            type="text"
+            id="redeemCodeInput"
+            class="text-input"
+            placeholder="Contoh: NETFLIX-XXXX-YYYY-ZZZZ"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <button class="btn btn-primary btn-full" id="btnSubmitRedeem" type="button">
+          <span>🎉 Aktifkan Voucher Sekarang</span>
+        </button>
+
+        <div id="redeemResultBox" style="display:none; margin-top:20px;"></div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: GENERATOR COOKIES (MANUAL)           -->
+    <!-- ========================================== -->
+    <div class="tab-content" id="tabCookies">
+      <div class="card" id="formCard">
+        <div class="card-title">
+          <span>🗝️ Input Cookies Netflix Manual</span>
+        </div>
+
+        <div class="form-group">
+          <label for="cookieInput">
+            <span>Tempelkan Cookies Akun:</span>
+            <span class="char-count" id="charCount">0 / 4000 karakter</span>
+          </label>
+          <textarea
+            id="cookieInput"
+            placeholder="Paste cookies Netflix kamu di sini...&#10;Contoh:&#10;[{&quot;name&quot;:&quot;NetflixId&quot;,&quot;value&quot;:&quot;...&quot;}] atau string cookie format netflix"
+            autocomplete="off"
+            spellcheck="false"
+          ></textarea>
+          
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <button class="btn btn-secondary btn-sm" id="btnPaste" type="button">
+                📋 Tempel Clipboard
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btnClear" type="button">
+                🧹 Hapus
+              </button>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn btn-secondary btn-sm" id="btnSample" type="button">
+                💡 Format Info
+              </button>
+            </div>
           </div>
-          <div class="step-status" id="step3Status">Menunggu</div>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="btnSubmit" type="button">
+          <span id="btnIcon">🚀</span>
+          <span id="btnText">Generate Netflix Link dari Cookies</span>
+        </button>
+      </div>
+
+      <!-- Live Stepper for Manual Cookie -->
+      <div class="card progress-card" id="progressCard">
+        <div class="card-title">
+          <span>⚡ Sedang Memproses Token...</span>
+          <span style="font-size:0.85rem; font-weight:400; color:var(--text-dim); margin-left:auto;" id="timerText">0s</span>
+        </div>
+
+        <div class="stepper">
+          <div class="step-item" id="step1">
+            <div class="step-icon">1</div>
+            <div class="step-text">
+              <div class="step-title">Memverifikasi Format & Sesi Cookie</div>
+              <div class="step-desc">Memeriksa struktur autentikasi dan validitas sesi akun</div>
+            </div>
+            <div class="step-status" id="step1Status">Menunggu</div>
+          </div>
+
+          <div class="step-item" id="step2">
+            <div class="step-icon">2</div>
+            <div class="step-text">
+              <div class="step-title">Memproses Token Login Otomatis</div>
+              <div class="step-desc">Menghubungkan ke sistem otorisasi dan enkripsi sesi</div>
+            </div>
+            <div class="step-status" id="step2Status">Menunggu</div>
+          </div>
+
+          <div class="step-item" id="step3">
+            <div class="step-icon">3</div>
+            <div class="step-text">
+              <div class="step-title">Generate URL Multi-Device</div>
+              <div class="step-desc">Membuat tautan akses instan untuk PC, HP, dan Smart TV</div>
+            </div>
+            <div class="step-status" id="step3Status">Menunggu</div>
+          </div>
         </div>
       </div>
 
-      <p style="font-size: 0.82rem; color: var(--text-dim); text-align: center;">
-        🔒 Sesi diamankan secara otomatis. Link akan langsung siap digunakan setelah proses selesai.
-      </p>
+      <!-- Result Section for Cookies -->
+      <div class="result-section" id="resultSection">
+        <div id="resultContent"></div>
+      </div>
     </div>
 
-    <!-- Result Section -->
-    <div class="result-section" id="resultSection">
-      <!-- Container for Success or Error View -->
-      <div id="resultContent"></div>
+    <!-- ========================================== -->
+    <!-- TAB 4: DAFTAR PAKET                         -->
+    <!-- ========================================== -->
+    <div class="tab-content" id="tabPackages">
+      <div class="card">
+        <div class="card-title">
+          <span>📦 Pilihan Paket Garansi Netflix</span>
+        </div>
+        <p style="font-size:0.9rem; color:var(--text-muted);">
+          Dapatkan akses klaim link login Netflix anti-ribet dengan kuota harian dan garansi penuh.
+        </p>
 
-      <!-- Button to generate again -->
-      <button class="btn btn-secondary btn-full" id="btnReset" type="button" style="margin-top: 10px;">
-        🔄 Generate Cookie Lainnya
-      </button>
+        <div class="packages-grid" id="packagesGrid">
+          <div class="pkg-card">
+            <div class="pkg-title">Paket 1 Hari</div>
+            <div class="pkg-price">Rp 5.000</div>
+            <ul class="pkg-features">
+              <li>Masa aktif 24 Jam</li>
+              <li>Limit 5x klaim per hari</li>
+              <li>Support PC, Mobile, Smart TV</li>
+              <li>Prioritas negara ID, MY, SG</li>
+            </ul>
+            <a class="btn btn-secondary btn-sm" id="btnBuy1" href="https://t.me/iLinkinStore" target="_blank">
+              💬 Beli via Admin
+            </a>
+          </div>
+
+          <div class="pkg-card">
+            <div class="pkg-title">Paket 7 Hari</div>
+            <div class="pkg-price">Rp 15.000</div>
+            <ul class="pkg-features">
+              <li>Masa aktif 7 Hari Penuh</li>
+              <li>Limit 5x klaim per hari</li>
+              <li>Garansi akun aktif</li>
+              <li>Support PC, Mobile, Smart TV</li>
+            </ul>
+            <a class="btn btn-secondary btn-sm" id="btnBuy7" href="https://t.me/iLinkinStore" target="_blank">
+              💬 Beli via Admin
+            </a>
+          </div>
+
+          <div class="pkg-card" style="border-color:rgba(229,9,20,0.5); background:rgba(229,9,20,0.04);">
+            <div style="font-size:0.75rem; font-weight:800; color:#ff4b55; text-transform:uppercase; margin-bottom:4px;">🔥 Terpopuler</div>
+            <div class="pkg-title">Paket 30 Hari (1 Bulan)</div>
+            <div class="pkg-price">Rp 35.000</div>
+            <ul class="pkg-features">
+              <li>Masa aktif 30 Hari</li>
+              <li>Limit 10x klaim per hari</li>
+              <li>Fitur Akun Sama / Perpanjang</li>
+              <li>Prioritas server super cepat</li>
+            </ul>
+            <a class="btn btn-primary btn-sm" id="btnBuy30" href="https://t.me/iLinkinStore" target="_blank">
+              💬 Beli via Admin
+            </a>
+          </div>
+
+          <div class="pkg-card">
+            <div class="pkg-title">Paket Lifetime (Selamanya)</div>
+            <div class="pkg-price">Rp 100.000</div>
+            <ul class="pkg-features">
+              <li>Masa aktif Selamanya (Lifetime)</li>
+              <li>Limit 20x klaim per hari</li>
+              <li>Garansi seumur hidup</li>
+              <li>Akses prioritas tertinggi</li>
+            </ul>
+            <a class="btn btn-secondary btn-sm" id="btnBuyLt" href="https://t.me/iLinkinStore" target="_blank">
+              💬 Beli via Admin
+            </a>
+          </div>
+        </div>
+
+        <div style="margin-top:24px; padding:16px; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.88rem; color:var(--text-muted); text-align:center;">
+          💡 <i>Setelah melakukan pembayaran, Admin akan memberikan Kode Voucher. Masukkan kode di tab <b>Redeem Voucher</b> untuk mengaktifkannya.</i>
+        </div>
+      </div>
     </div>
 
-    <!-- FAQ / Panduan Accordion -->
+    <!-- FAQ Accordion -->
     <div class="faq-section">
       <div class="faq-title">
-        <span>📖 Panduan & Bantuan</span>
+        <span>📖 Panduan & Pertanyaan Umum</span>
       </div>
 
       <div class="faq-item">
         <div class="faq-question">
-          <span>Bagaimana cara menggunakan Link yang digenerate?</span>
+          <span>Bagaimana cara klaim link Netflix di web?</span>
           <span class="faq-arrow">▼</span>
         </div>
         <div class="faq-answer">
-          • <b>PC / Laptop:</b> Klik tombol <b>Buka</b> atau salin link dan buka di browser baru.<br>
-          • <b>HP / Mobile:</b> Buka link di browser HP (Chrome/Safari), maka akan otomatis dialihkan ke Netflix.<br>
-          • <b>Smart TV:</b> Buka link TV di browser browser TV Anda untuk aktivasi login otomatis.<br>
-          ⚠️ <i>Gunakan link sebelum waktu expired terlewati!</i>
+          1. Masukkan kode voucher yang Anda beli dari Admin di kolom <b>Kode Lisensi / Voucher</b>.<br>
+          2. Klik <b>Cek Status</b>. Status lisensi dan kuota harian Anda akan tampil.<br>
+          3. Klik <b>✨ Ambil Akun Baru</b>. Tunggu sistem bot mengambil link login.<br>
+          4. Setelah selesai, klik tombol <b>🌐 Buka</b> atau <b>📋 Salin Link</b> pada perangkat yang Anda gunakan (PC, HP, atau TV)!
         </div>
       </div>
 
       <div class="faq-item">
         <div class="faq-question">
-          <span>Kenapa muncul pesan "Cookie expired atau tidak valid"?</span>
+          <span>Apa perbedaan "Ambil Akun Baru" dan "Ambil Akun Sama"?</span>
           <span class="faq-arrow">▼</span>
         </div>
         <div class="faq-answer">
-          Hal ini terjadi jika sesi login akun Netflix asli sudah logout, password diubah, atau cookies sudah terlalu lama tidak diperbarui. Solusinya: login ulang ke akun Netflix di browser Anda, ambil cookies baru, dan generate kembali.
+          • <b>Ambil Akun Baru:</b> Mengambil akun Netflix baru dari server bot dengan profil fresh.<br>
+          • <b>Ambil Akun Sama:</b> Membuat link login baru untuk akun yang sebelumnya sudah Anda dapatkan, cocok jika link lama kedaluwarsa tapi Anda ingin melanjutkan tontonan di akun yang sama.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          <span>Apakah saya harus memasukkan kode setiap kali membuka web?</span>
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          Tidak perlu! Kode yang Anda masukkan otomatis disimpan di memori browser (LocalStorage). Saat Anda membuka web ini lagi, kode sudah otomatis terisi dan siap diklaim.
         </div>
       </div>
     </div>
 
   </div>
 
-  <!-- Toast Element -->
+  <!-- Toast Notification -->
   <div class="toast" id="toast">
     <span id="toastIcon">✅</span>
     <span id="toastMsg">Tersalin ke clipboard!</span>
@@ -927,78 +1177,37 @@
 
   <!-- Footer -->
   <footer>
-    <p>Powered by iLink.in Store</p>
-    <p style="margin-top: 6px;">
-      <a href="/setup-userbot.html" target="_blank">Setup Userbot Session</a> • 
-      <a href="/api/health" target="_blank">Server Health</a>
+    <p>Powered by iLink.in Store — Netflix Automation Portal</p>
+    <p style="margin-top:6px;">
+      <a href="https://t.me/iLinkinStore" target="_blank">Telegram Support</a> • 
+      <a href="/setup-userbot.html" target="_blank">Setup Userbot Session</a>
     </p>
   </footer>
 
   <!-- App Script -->
   <script>
-    const $ = id => document.getElementById(id);
+    const $ = (id) => document.getElementById(id);
 
-    const cookieInput = $("cookieInput");
-    const charCount = $("charCount");
-    const btnPaste = $("btnPaste");
-    const btnClear = $("btnClear");
-    const btnSample = $("btnSample");
-    const btnSubmit = $("btnSubmit");
-    const btnIcon = $("btnIcon");
-    const btnText = $("btnText");
+    // Tab Navigation
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
 
-    const formCard = $("formCard");
-    const progressCard = $("progressCard");
-    const timerText = $("timerText");
+        btn.classList.add("active");
+        const tabId = btn.getAttribute("data-tab");
+        const tabContent = $(tabId);
+        if (tabContent) tabContent.classList.add("active");
+      });
+    });
 
-    const resultSection = $("resultSection");
-    const resultContent = $("resultContent");
-    const btnReset = $("btnReset");
+    function switchTab(tabId) {
+      const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+      if (btn) btn.click();
+    }
+
+    // Toast
     const toast = $("toast");
-
-    let pollInterval = null;
-    let timerInterval = null;
-    let startTime = 0;
-    let isProcessing = false;
-
-    // Char count update
-    cookieInput.addEventListener("input", () => {
-      const len = cookieInput.value.length;
-      charCount.textContent = `${len} / 4000 karakter`;
-      if (len > 4000) {
-        charCount.style.color = "#ef4444";
-      } else {
-        charCount.style.color = "var(--text-dim)";
-      }
-    });
-
-    // Paste from clipboard
-    btnPaste.addEventListener("click", async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        if (text) {
-          cookieInput.value = text;
-          cookieInput.dispatchEvent(new Event("input"));
-          showToast("📋 Cookies berhasil ditempel dari clipboard!");
-        }
-      } catch (err) {
-        showToast("⚠️ Izinkan akses clipboard pada browser Anda.", "⚠️");
-      }
-    });
-
-    // Clear textarea
-    btnClear.addEventListener("click", () => {
-      cookieInput.value = "";
-      cookieInput.dispatchEvent(new Event("input"));
-      cookieInput.focus();
-    });
-
-    // Sample Info
-    btnSample.addEventListener("click", () => {
-      alert("Format yang didukung:\n\n1. Export JSON dari Cookie-Editor (rekomendasi)\n2. Netscape format (teks baris tabulasi)\n3. Key-value string cookies\n\nPastikan cookies masih aktif saat login di Netflix!");
-    });
-
-    // Toast notification
     function showToast(message, icon = "✅") {
       $("toastIcon").textContent = icon;
       $("toastMsg").textContent = message;
@@ -1023,7 +1232,6 @@
           }, 2000);
         }
       } catch (e) {
-        // Fallback
         const ta = document.createElement("textarea");
         ta.value = text;
         document.body.appendChild(ta);
@@ -1034,7 +1242,568 @@
       }
     }
 
-    // Stepper updates
+    // ==========================================
+    // TAB 1: KLAIM TOKEN / GARANSI LOGIC
+    // ==========================================
+    const claimCodeInput = $("claimCodeInput");
+    const btnCheckCode = $("btnCheckCode");
+    const savedBadge = $("savedBadge");
+
+    const licenseStatusPanel = $("licenseStatusPanel");
+    const vipBadge = $("vipBadge");
+    const statusName = $("statusName");
+    const statusExpiry = $("statusExpiry");
+    const statPackage = $("statPackage");
+    const statToday = $("statToday");
+    const statRemaining = $("statRemaining");
+    const savedAccountBox = $("savedAccountBox");
+    const savedAccountCountry = $("savedAccountCountry");
+    const unredeemedAlertBox = $("unredeemedAlertBox");
+    const unredeemedPkgName = $("unredeemedPkgName");
+
+    const btnClaimNew = $("btnClaimNew");
+    const btnClaimSame = $("btnClaimSame");
+
+    const claimProgressCard = $("claimProgressCard");
+    const claimTimerText = $("claimTimerText");
+    const claimResultSection = $("claimResultSection");
+    const claimResultContent = $("claimResultContent");
+
+    let currentLicenseStatus = null;
+    let claimPollInterval = null;
+    let claimTimerInterval = null;
+    let claimStartTime = 0;
+
+    // Load saved code from LocalStorage
+    const STORAGE_KEY = "ilink_netflix_code";
+    const savedCode = localStorage.getItem(STORAGE_KEY);
+    if (savedCode) {
+      claimCodeInput.value = savedCode;
+      savedBadge.textContent = "✓ Tersimpan di browser";
+      checkClaimCode(savedCode, false);
+    }
+
+    btnCheckCode.addEventListener("click", () => {
+      const code = claimCodeInput.value.trim();
+      if (!code) {
+        alert("Silakan masukkan kode voucher atau ID Telegram Anda!");
+        claimCodeInput.focus();
+        return;
+      }
+      checkClaimCode(code, true);
+    });
+
+    claimCodeInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        btnCheckCode.click();
+      }
+    });
+
+    async function checkClaimCode(code, showToastOnSuccess = true) {
+      btnCheckCode.disabled = true;
+      btnCheckCode.textContent = "⏳ Memeriksa...";
+
+      try {
+        const res = await fetch(`/api/claim-status?code=${encodeURIComponent(code)}&packages=1`);
+        const data = await res.json();
+
+        if (!data.ok) {
+          licenseStatusPanel.style.display = "none";
+          currentLicenseStatus = null;
+          alert(data.error || "Kode tidak ditemukan. Pastikan kode yang Anda masukkan benar.");
+          return;
+        }
+
+        currentLicenseStatus = data;
+        localStorage.setItem(STORAGE_KEY, code);
+        savedBadge.textContent = "✓ Tersimpan di browser";
+
+        renderLicenseStatus(data);
+        if (showToastOnSuccess) {
+          showToast("Status lisensi berhasil diperbarui!");
+        }
+      } catch (err) {
+        console.error("checkClaimCode error:", err);
+        alert("Gagal memeriksa status: " + (err.message || "Periksa koneksi Anda."));
+      } finally {
+        btnCheckCode.disabled = false;
+        btnCheckCode.textContent = "🔍 Cek Status";
+      }
+    }
+
+    function renderLicenseStatus(status) {
+      licenseStatusPanel.style.display = "block";
+
+      if (status.needsActivation) {
+        vipBadge.className = "status-badge warning";
+        vipBadge.textContent = "⚠️ Belum Diaktifkan";
+        statusName.textContent = "Voucher Baru";
+        statusExpiry.textContent = "Belum Diaktifkan";
+        statPackage.textContent = status.packageName || "Paket Garansi";
+        statToday.textContent = "0x";
+        statRemaining.textContent = `${status.dailyLimit || 5}x per hari`;
+        unredeemedAlertBox.style.display = "block";
+        unredeemedPkgName.textContent = status.packageName || "Garansi";
+        savedAccountBox.style.display = "none";
+
+        btnClaimNew.innerHTML = "<span>⚡ Aktifkan & Ambil Akun Baru</span>";
+        btnClaimSame.disabled = true;
+        btnClaimSame.style.display = "none";
+        return;
+      }
+
+      unredeemedAlertBox.style.display = "none";
+      btnClaimNew.innerHTML = "<span>✨ Ambil Akun Baru</span>";
+      btnClaimSame.style.display = "inline-flex";
+
+      if (status.hasActiveWarranty) {
+        vipBadge.className = "status-badge";
+        vipBadge.textContent = "✅ VIP Aktif";
+        statusName.textContent = status.name || "Pemegang Lisensi VIP";
+        statusExpiry.textContent = status.isLifetime
+          ? "Selamanya (Lifetime ♾️)"
+          : (status.expiresAt ? new Date(status.expiresAt).toLocaleDateString("id-ID", { dateStyle: "medium" }) : "-");
+        statPackage.textContent = status.packageName || "Garansi VIP";
+        statToday.textContent = `${status.claimsToday || 0} dari ${status.dailyLimit || 5} klaim`;
+        statRemaining.textContent = `${status.remainingToday || 0} klaim tersisa`;
+
+        btnClaimNew.disabled = status.remainingToday <= 0;
+        btnClaimSame.disabled = !status.hasSavedAccount || status.remainingToday <= 0;
+
+        if (status.hasSavedAccount) {
+          savedAccountBox.style.display = "block";
+          savedAccountCountry.textContent = status.savedAccountCountry || "Global";
+        } else {
+          savedAccountBox.style.display = "none";
+        }
+      } else {
+        vipBadge.className = "status-badge danger";
+        vipBadge.textContent = "❌ Garansi Kedaluwarsa";
+        statusName.textContent = status.name || "Akun";
+        statusExpiry.textContent = "Kedaluwarsa";
+        statPackage.textContent = status.packageName || "-";
+        statToday.textContent = `${status.claimsToday || 0}x`;
+        statRemaining.textContent = "0 klaim";
+        savedAccountBox.style.display = "none";
+
+        btnClaimNew.disabled = true;
+        btnClaimSame.disabled = true;
+      }
+    }
+
+    // Action: Klaim Akun Baru
+    btnClaimNew.addEventListener("click", () => {
+      startClaim("baru");
+    });
+
+    // Action: Klaim Akun Sama
+    btnClaimSame.addEventListener("click", () => {
+      startClaim("sama");
+    });
+
+    function setClaimStep(num, status) {
+      const step = $(`claimStep${num}`);
+      const label = $(`claimStep${num}Status`);
+      if (!step || !label) return;
+
+      if (status === "active") {
+        step.className = "step-item active";
+        label.textContent = "Sedang diproses...";
+      } else if (status === "done") {
+        step.className = "step-item done";
+        label.textContent = "Selesai ✓";
+      } else {
+        step.className = "step-item";
+        label.textContent = "Menunggu";
+      }
+    }
+
+    async function startClaim(mode) {
+      const code = claimCodeInput.value.trim();
+      if (!code) {
+        alert("Kode lisensi / voucher belum diisi!");
+        claimCodeInput.focus();
+        return;
+      }
+
+      btnClaimNew.disabled = true;
+      btnClaimSame.disabled = true;
+
+      claimProgressCard.style.display = "block";
+      claimResultSection.style.display = "none";
+      claimResultContent.innerHTML = "";
+
+      setClaimStep(1, "active");
+      setClaimStep(2, "idle");
+      setClaimStep(3, "idle");
+
+      claimStartTime = Date.now();
+      clearInterval(claimTimerInterval);
+      claimTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - claimStartTime) / 1000);
+        claimTimerText.textContent = `${elapsed}s`;
+
+        if (elapsed >= 1 && elapsed < 3) {
+          setClaimStep(1, "done");
+          setClaimStep(2, "active");
+        } else if (elapsed >= 4) {
+          setClaimStep(1, "done");
+          setClaimStep(2, "done");
+          setClaimStep(3, "active");
+        }
+      }, 1000);
+
+      try {
+        const res = await fetch("/api/claim", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, mode })
+        });
+
+        const data = await res.json();
+        if (!data.ok || !data.jobId) {
+          throw new Error(data.error || "Gagal memasukkan klaim ke antrian.");
+        }
+
+        setClaimStep(1, "done");
+        setClaimStep(2, "active");
+        pollClaimJobStatus(data.jobId, code);
+      } catch (err) {
+        stopClaimProgress();
+        renderClaimError({
+          title: "Gagal Memproses Klaim",
+          description: err.message || "Terjadi kesalahan saat klaim token.",
+          causes: [
+            "Kuota klaim harian Anda mungkin sudah habis",
+            "Masa garansi lisensi sudah kedaluwarsa",
+            "Koneksi server sedang sibuk"
+          ],
+          suggestion: "Periksa kembali status lisensi Anda atau hubungi Admin."
+        });
+      }
+    }
+
+    function stopClaimProgress() {
+      clearInterval(claimTimerInterval);
+      clearInterval(claimPollInterval);
+      claimProgressCard.style.display = "none";
+      btnClaimNew.disabled = false;
+      if (currentLicenseStatus?.hasSavedAccount) {
+        btnClaimSame.disabled = false;
+      }
+    }
+
+    function pollClaimJobStatus(jobId, code) {
+      let attempts = 0;
+      const maxAttempts = 180;
+
+      claimPollInterval = setInterval(async () => {
+        attempts++;
+        if (attempts > maxAttempts) {
+          stopClaimProgress();
+          renderClaimError({
+            title: "Waktu Proses Habis (Timeout)",
+            description: "Server membutuhkan waktu lebih lama dari biasanya.",
+            causes: ["Server target bot sedang melayani antrian padat"],
+            suggestion: "Tunggu beberapa saat dan periksa kembali status klaim Anda."
+          });
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/job-status?id=${encodeURIComponent(jobId)}`);
+          if (!res.ok) return;
+
+          const data = await res.json();
+          if (!data.ok) return;
+
+          if (data.status === "processing") {
+            setClaimStep(1, "done");
+            setClaimStep(2, "done");
+            setClaimStep(3, "active");
+          } else if (data.status === "completed") {
+            setClaimStep(1, "done");
+            setClaimStep(2, "done");
+            setClaimStep(3, "done");
+
+            stopClaimProgress();
+            handleClaimCompleted(data);
+            checkClaimCode(code, false);
+          } else if (data.status === "failed") {
+            stopClaimProgress();
+            renderClaimError({
+              title: "Proses Klaim Gagal",
+              description: data.error || "Target bot tidak mengembalikan link yang valid.",
+              causes: [
+                "Stok negara target sedang kosong",
+                "Akun target bot sedang memproses antrian lain",
+                "Koneksi userbot terputus"
+              ],
+              suggestion: "Coba klaim kembali dalam 1-2 menit."
+            });
+          }
+        } catch (e) {
+          console.error("Polling error:", e);
+        }
+      }, 750);
+    }
+
+    function handleClaimCompleted(jobData) {
+      const parsed = jobData.parsed;
+      const result = jobData.result || {};
+
+      let devices = parsed?.devices || [];
+      if (!devices.length) {
+        if (result.pcUrl) devices.push({ id: "pc", label: "PC / Laptop", icon: "🖥️", url: result.pcUrl });
+        if (result.mobileUrl) devices.push({ id: "mobile", label: "HP / Mobile", icon: "📱", url: result.mobileUrl });
+        if (result.tvUrl) devices.push({ id: "tv", label: "Smart TV", icon: "📺", url: result.tvUrl });
+      }
+
+      if (!devices.length) {
+        renderClaimGeneric(result);
+        return;
+      }
+
+      let devicesHtml = "";
+      for (const dev of devices) {
+        const safeUrl = dev.url.replace(/"/g, "&quot;");
+        devicesHtml += `
+          <div class="device-card">
+            <div class="device-top">
+              <div class="device-name">
+                <span>${dev.icon || '📱'}</span>
+                <span>${dev.label}</span>
+              </div>
+            </div>
+            <div class="device-url-wrap">
+              <span class="device-url-text" title="${safeUrl}">${safeUrl}</span>
+            </div>
+            <div class="device-actions">
+              <a class="btn btn-open" href="${safeUrl}" target="_blank" rel="noopener noreferrer">
+                🌐 Buka
+              </a>
+              <button class="btn btn-copy" type="button" onclick="copyToClipboard('${safeUrl}', this)">
+                📋 Salin Link
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      const countryBadge = result.country ? `
+        <span class="status-badge" style="background:rgba(229,9,20,0.15); color:#ff5252; border-color:rgba(229,9,20,0.3);">
+          🌍 Region: ${result.country}
+        </span>
+      ` : "";
+
+      claimResultContent.innerHTML = `
+        <div class="card" style="border-color: rgba(16, 185, 129, 0.4);">
+          <div class="success-header">
+            <div class="success-header-left">
+              <div class="success-icon-badge">🍿</div>
+              <div>
+                <div class="success-title">Link Login Netflix Berhasil Diambil!</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">Pilih link sesuai perangkat yang ingin Anda gunakan:</div>
+              </div>
+            </div>
+            ${countryBadge}
+          </div>
+
+          <div class="devices-grid">
+            ${devicesHtml}
+          </div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+            <button class="btn btn-secondary btn-sm" onclick="copyAllClaimLinks()" type="button">
+              📋 Salin Semua Link
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="focusClaim()" type="button">
+              🔄 Klaim Lainnya
+            </button>
+          </div>
+        </div>
+      `;
+
+      window.lastClaimDevices = devices;
+      claimResultSection.style.display = "block";
+      claimResultSection.scrollIntoView({ behavior: "smooth" });
+      showToast("🎉 Link Netflix berhasil diambil!");
+    }
+
+    window.copyAllClaimLinks = () => {
+      if (!window.lastClaimDevices || !window.lastClaimDevices.length) return;
+      const text = window.lastClaimDevices.map((d) => `${d.label}:\n${d.url}`).join("\n\n");
+      copyToClipboard(text);
+    };
+
+    window.focusClaim = () => {
+      claimResultSection.style.display = "none";
+      $("claimCard").scrollIntoView({ behavior: "smooth" });
+    };
+
+    function renderClaimError({ title, description, causes, suggestion }) {
+      const causesHtml = (causes || []).map((c) => `<li>${c}</li>`).join("");
+
+      claimResultContent.innerHTML = `
+        <div class="card error-card">
+          <div class="error-header">
+            <div class="error-icon-badge">❌</div>
+            <div>
+              <div class="error-title">${title}</div>
+              <div class="error-desc">${description}</div>
+            </div>
+          </div>
+
+          ${causes && causes.length ? `
+            <div style="background:rgba(0,0,0,0.3); padding:12px 16px; border-radius:var(--radius-sm); margin-bottom:14px;">
+              <div style="font-size:0.85rem; font-weight:700; color:#fca5a5; margin-bottom:6px;">Kemungkinan penyebab:</div>
+              <ul style="list-style:inside; font-size:0.85rem; color:var(--text-muted);">${causesHtml}</ul>
+            </div>
+          ` : ""}
+
+          ${suggestion ? `
+            <div style="font-size:0.88rem; color:#fcd34d; margin-bottom:14px;">
+              💡 <b>Saran:</b> ${suggestion}
+            </div>
+          ` : ""}
+
+          <button class="btn btn-secondary btn-sm" onclick="focusClaim()" type="button">
+            🔄 Coba Lagi
+          </button>
+        </div>
+      `;
+
+      claimResultSection.style.display = "block";
+      claimResultSection.scrollIntoView({ behavior: "smooth" });
+    }
+
+    function renderClaimGeneric(result) {
+      const text = JSON.stringify(result, null, 2);
+      claimResultContent.innerHTML = `
+        <div class="card">
+          <div class="card-title">ℹ️ Hasil Bot:</div>
+          <pre style="background:var(--bg-input); padding:14px; border-radius:var(--radius-sm); white-space:pre-wrap; word-break:break-word; font-family:'JetBrains Mono'; font-size:0.85rem; border:1px solid var(--border); color:var(--text-main);">${text.replace(/</g, "&lt;")}</pre>
+        </div>
+      `;
+      claimResultSection.style.display = "block";
+      claimResultSection.scrollIntoView({ behavior: "smooth" });
+    }
+
+    // ==========================================
+    // TAB 2: REDEEM VOUCHER LOGIC
+    // ==========================================
+    const redeemCodeInput = $("redeemCodeInput");
+    const btnSubmitRedeem = $("btnSubmitRedeem");
+    const redeemResultBox = $("redeemResultBox");
+
+    btnSubmitRedeem.addEventListener("click", async () => {
+      const code = redeemCodeInput.value.trim();
+      if (!code) {
+        alert("Silakan masukkan kode voucher terlebih dahulu!");
+        redeemCodeInput.focus();
+        return;
+      }
+
+      btnSubmitRedeem.disabled = true;
+      btnSubmitRedeem.innerHTML = "<span>⏳ Mengaktifkan Voucher...</span>";
+      redeemResultBox.style.display = "none";
+
+      try {
+        const res = await fetch("/api/redeem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code })
+        });
+
+        const data = await res.json();
+        if (!data.ok) {
+          throw new Error(data.message || data.error || "Gagal mengaktifkan voucher.");
+        }
+
+        redeemResultBox.innerHTML = `
+          <div style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.35); border-radius:var(--radius); padding:20px; text-align:center;">
+            <div style="font-size:2rem; margin-bottom:8px;">🎉</div>
+            <div style="font-size:1.15rem; font-weight:800; color:#34d399; margin-bottom:6px;">Voucher Berhasil Diaktifkan!</div>
+            <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">${data.message || "Garansi VIP Anda sudah aktif."}</p>
+            <button class="btn btn-primary" id="btnGoClaim" type="button">
+              🍿 Langsung Klaim Link Netflix Sekarang
+            </button>
+          </div>
+        `;
+        redeemResultBox.style.display = "block";
+
+        $("btnGoClaim").addEventListener("click", () => {
+          claimCodeInput.value = code;
+          localStorage.setItem(STORAGE_KEY, code);
+          switchTab("tabClaim");
+          checkClaimCode(code, true);
+        });
+
+        showToast("🎉 Voucher berhasil diaktifkan!");
+      } catch (err) {
+        redeemResultBox.innerHTML = `
+          <div style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); border-radius:var(--radius); padding:16px;">
+            <div style="font-weight:700; color:#fca5a5; margin-bottom:4px;">❌ Aktivasi Gagal</div>
+            <p style="font-size:0.88rem; color:var(--text-muted);">${err.message}</p>
+          </div>
+        `;
+        redeemResultBox.style.display = "block";
+      } finally {
+        btnSubmitRedeem.disabled = false;
+        btnSubmitRedeem.innerHTML = "<span>🎉 Aktifkan Voucher Sekarang</span>";
+      }
+    });
+
+    // ==========================================
+    // TAB 3: GENERATOR COOKIES (MANUAL) LOGIC
+    // ==========================================
+    const cookieInput = $("cookieInput");
+    const charCount = $("charCount");
+    const btnPaste = $("btnPaste");
+    const btnClear = $("btnClear");
+    const btnSample = $("btnSample");
+    const btnSubmit = $("btnSubmit");
+    const btnIcon = $("btnIcon");
+    const btnText = $("btnText");
+
+    const progressCard = $("progressCard");
+    const timerText = $("timerText");
+    const resultSection = $("resultSection");
+    const resultContent = $("resultContent");
+
+    let pollInterval = null;
+    let timerInterval = null;
+    let startTime = 0;
+
+    cookieInput.addEventListener("input", () => {
+      const len = cookieInput.value.length;
+      charCount.textContent = `${len} / 4000 karakter`;
+      charCount.style.color = len > 4000 ? "#ef4444" : "var(--text-dim)";
+    });
+
+    btnPaste.addEventListener("click", async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          cookieInput.value = text;
+          cookieInput.dispatchEvent(new Event("input"));
+          showToast("📋 Cookies ditempel!");
+        }
+      } catch {
+        showToast("⚠️ Izinkan akses clipboard.", "⚠️");
+      }
+    });
+
+    btnClear.addEventListener("click", () => {
+      cookieInput.value = "";
+      cookieInput.dispatchEvent(new Event("input"));
+      cookieInput.focus();
+    });
+
+    btnSample.addEventListener("click", () => {
+      alert("Format yang didukung:\n\n1. JSON array Cookie-Editor\n2. Netscape format (.txt)\n3. String cookies (NetflixId=...)");
+    });
+
     function setStep(stepNum, status) {
       const step = $(`step${stepNum}`);
       const statusLabel = $(`step${stepNum}Status`);
@@ -1052,31 +1821,21 @@
       }
     }
 
-    function resetStepper() {
-      for (let i = 1; i <= 3; i++) {
-        setStep(i, "idle");
-      }
-    }
-
-    // Submit handler
     btnSubmit.addEventListener("click", async () => {
       const payload = cookieInput.value.trim();
       if (!payload) {
-        alert("Silakan masukkan / paste cookies Netflix terlebih dahulu!");
+        alert("Silakan tempelkan cookies Netflix terlebih dahulu!");
         cookieInput.focus();
         return;
       }
-
       if (payload.length > 4000) {
-        alert(`Panjang teks (${payload.length}) melebihi batas 4000 karakter.`);
+        alert("Cookies melebihi batas 4000 karakter.");
         return;
       }
-
-      startGeneration(payload);
+      startCookieGeneration(payload);
     });
 
-    async function startGeneration(payload) {
-      isProcessing = true;
+    async function startCookieGeneration(payload) {
       btnSubmit.disabled = true;
       btnIcon.textContent = "⏳";
       btnText.textContent = "Memverifikasi Token...";
@@ -1084,15 +1843,16 @@
       progressCard.style.display = "block";
       resultSection.style.display = "none";
       resultContent.innerHTML = "";
-      resetStepper();
 
       setStep(1, "active");
+      setStep(2, "idle");
+      setStep(3, "idle");
+
       startTime = Date.now();
       timerInterval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         timerText.textContent = `${elapsed}s`;
 
-        // Smooth visual progress indication
         if (elapsed >= 1 && elapsed < 3) {
           setStep(1, "done");
           setStep(2, "active");
@@ -1112,50 +1872,34 @@
 
         const data = await res.json();
         if (!data.ok || !data.jobId) {
-          throw new Error(data.error || "Gagal memproses permintaan token.");
+          throw new Error(data.error || "Gagal memproses token.");
         }
 
         setStep(1, "done");
         setStep(2, "active");
-        pollJobStatus(data.jobId);
+        pollCookieJobStatus(data.jobId);
       } catch (error) {
-        stopGeneration();
-        renderErrorCard({
-          title: "Gagal Mengirim Permintaan",
-          description: error.message || "Terjadi kendala saat menghubungi server.",
-          causes: ["Koneksi jaringan terputus", "Server sedang dalam pemeliharaan"],
-          suggestion: "Periksa koneksi Anda dan coba beberapa saat lagi."
-        });
+        stopCookieGeneration();
+        renderCookieError(error.message);
       }
     }
 
-    function stopGeneration() {
-      isProcessing = false;
+    function stopCookieGeneration() {
       btnSubmit.disabled = false;
       btnIcon.textContent = "🚀";
-      btnText.textContent = "Generate Netflix Link";
+      btnText.textContent = "Generate Netflix Link dari Cookies";
       clearInterval(timerInterval);
       clearInterval(pollInterval);
       progressCard.style.display = "none";
     }
 
-    function pollJobStatus(jobId) {
+    function pollCookieJobStatus(jobId) {
       let attempts = 0;
-      const maxAttempts = 160; // 160 * 0.75s ~ 120 seconds max
-
       pollInterval = setInterval(async () => {
         attempts++;
-        if (attempts > maxAttempts) {
-          stopGeneration();
-          renderErrorCard({
-            title: "Waktu Proses Habis (Timeout)",
-            description: "Server membutuhkan waktu lebih lama dari biasanya untuk memproses.",
-            causes: [
-              "Sistem sedang melayani antrian yang padat",
-              "Sesi cookie membutuhkan verifikasi ulang"
-            ],
-            suggestion: "Tunggu beberapa saat lalu coba generate kembali."
-          });
+        if (attempts > 160) {
+          stopCookieGeneration();
+          renderCookieError("Waktu proses habis. Silakan coba lagi.");
           return;
         }
 
@@ -1174,21 +1918,11 @@
             setStep(1, "done");
             setStep(2, "done");
             setStep(3, "done");
-
-            stopGeneration();
-            handleJobCompleted(data);
+            stopCookieGeneration();
+            handleCookieCompleted(data);
           } else if (data.status === "failed") {
-            stopGeneration();
-            renderErrorCard({
-              title: "Proses Generate Gagal",
-              description: data.error || "Gagal membuat token login Netflix.",
-              causes: [
-                "Sesi cookie sudah tidak valid atau format salah",
-                "Server sedang sibuk memproses antrian lain",
-                "Koneksi otorisasi terputus"
-              ],
-              suggestion: "Pastikan cookies aktif dan coba generate kembali."
-            });
+            stopCookieGeneration();
+            renderCookieError(data.error || "Cookie tidak valid atau kedaluwarsa.");
           }
         } catch (e) {
           console.error("Polling error:", e);
@@ -1196,235 +1930,72 @@
       }, 750);
     }
 
-    function handleJobCompleted(jobData) {
+    function handleCookieCompleted(jobData) {
       const parsed = jobData.parsed;
+      const devices = parsed?.devices || [];
 
-      if (!parsed) {
-        renderGenericResult(jobData.result);
+      if (!devices.length) {
+        resultContent.innerHTML = `<div class="card"><pre style="background:var(--bg-input); padding:14px;">${JSON.stringify(jobData.result, null, 2)}</pre></div>`;
+        resultSection.style.display = "block";
         return;
       }
 
-      if (parsed.type === "cookie_expired") {
-        renderCookieExpiredCard(parsed);
-      } else if (parsed.type === "success" && parsed.devices && parsed.devices.length > 0) {
-        renderSuccessResult(parsed);
-      } else {
-        renderGenericResult(parsed);
-      }
-    }
-
-    // Render Success Card with individual Buka & Salin buttons
-    function renderSuccessResult(parsed) {
       let devicesHtml = "";
-
-      for (const dev of parsed.devices) {
+      for (const dev of devices) {
         const safeUrl = dev.url.replace(/"/g, "&quot;");
         devicesHtml += `
           <div class="device-card">
             <div class="device-top">
-              <div class="device-name">
-                <span>${dev.icon}</span>
-                <span>${dev.label}</span>
-              </div>
+              <div class="device-name"><span>${dev.icon || '📱'}</span><span>${dev.label}</span></div>
             </div>
-            <div class="device-url-wrap">
-              <span class="device-url-text" title="${safeUrl}">${safeUrl}</span>
-            </div>
+            <div class="device-url-wrap"><span class="device-url-text">${safeUrl}</span></div>
             <div class="device-actions">
-              <a class="btn btn-open" href="${safeUrl}" target="_blank" rel="noopener noreferrer">
-                🌐 Buka
-              </a>
-              <button class="btn btn-copy" type="button" onclick="copyToClipboard('${safeUrl}', this)">
-                📋 Salin Link
-              </button>
+              <a class="btn btn-open" href="${safeUrl}" target="_blank">🌐 Buka</a>
+              <button class="btn btn-copy" type="button" onclick="copyToClipboard('${safeUrl}', this)">📋 Salin Link</button>
             </div>
           </div>
         `;
       }
-
-      let notesHtml = "";
-      if (parsed.notes && parsed.notes.length) {
-        notesHtml = `
-          <div class="notes-box">
-            <h4>📌 Petunjuk & Catatan Penting:</h4>
-            <ul class="notes-list">
-              ${parsed.notes.map(n => `<li>${n}</li>`).join("")}
-            </ul>
-          </div>
-        `;
-      }
-
-      const expiredTag = parsed.expired ? `
-        <div class="expired-badge">
-          <span>⏰ Expired:</span>
-          <strong>${parsed.expired}</strong>
-        </div>
-      ` : "";
 
       resultContent.innerHTML = `
-        <div class="card" style="border-color: rgba(16, 185, 129, 0.4);">
+        <div class="card" style="border-color:rgba(16,185,129,0.4);">
           <div class="success-header">
             <div class="success-header-left">
               <div class="success-icon-badge">✅</div>
               <div>
-                <div class="success-title">NFT Token Berhasil Digenerate!</div>
-                <div style="font-size: 0.85rem; color: var(--text-muted);">Link siap digunakan sesuai perangkat Anda</div>
+                <div class="success-title">Token Berhasil Digenerate!</div>
+                <div style="font-size:0.85rem; color:var(--text-muted);">Gunakan link sebelum kedaluwarsa</div>
               </div>
             </div>
-            ${expiredTag}
           </div>
-
-          <div style="font-weight: 700; margin-bottom: 14px; font-size: 1rem; color: #fff;">
-            🔗 NFT Token Links by Device:
-          </div>
-
-          <div class="devices-grid">
-            ${devicesHtml}
-          </div>
-
-          ${notesHtml}
-
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="btn btn-secondary btn-sm" onclick="copyAllLinks()" type="button">
-              📋 Salin Semua Link
-            </button>
-          </div>
+          <div class="devices-grid">${devicesHtml}</div>
         </div>
       `;
-
-      // Save devices globally for "Salin Semua Link"
-      window.lastGeneratedDevices = parsed.devices;
-
       resultSection.style.display = "block";
       resultSection.scrollIntoView({ behavior: "smooth" });
-      showToast("🎉 NFT Token berhasil digenerate!");
+      showToast("🎉 Token berhasil dibuat!");
     }
 
-    // Salin Semua Link helper
-    window.copyAllLinks = () => {
-      if (!window.lastGeneratedDevices || !window.lastGeneratedDevices.length) return;
-      const text = window.lastGeneratedDevices.map(d => `${d.label}:\n${d.url}`).join("\n\n");
-      copyToClipboard(text);
-    };
-
-    // Render Cookie Expired / Invalid Card
-    function renderCookieExpiredCard(parsed) {
-      const causesHtml = (parsed.causes || [
-        "Cookie sudah expired",
-        "Cookie tidak valid",
-        "Perlu login Netflix lagi"
-      ]).map(c => `<li>${c}</li>`).join("");
-
+    function renderCookieError(msg) {
       resultContent.innerHTML = `
         <div class="card error-card">
           <div class="error-header">
             <div class="error-icon-badge">⚠️</div>
             <div>
-              <div class="error-title">${parsed.title || "⚠️ Cookie expired atau tidak valid. Silakan ambil cookie baru."}</div>
-              <div class="error-desc">${parsed.description || "Cookies tidak dapat digunakan untuk generate link login."}</div>
+              <div class="error-title">Gagal Generate Link</div>
+              <div class="error-desc">${msg}</div>
             </div>
           </div>
-
-          <div class="causes-box">
-            <div class="causes-title">Kemungkinan penyebab:</div>
-            <ul class="causes-list">
-              ${causesHtml}
-            </ul>
-          </div>
-
-          <div class="error-solution">
-            <span>💡</span>
-            <span><strong>Solusi:</strong> ${parsed.suggestion || "Ambil cookie fresh dan coba lagi."}</span>
-          </div>
-
-          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <button class="btn btn-primary" onclick="focusInput()" type="button">
-              🔄 Masukkan Cookie Baru
-            </button>
-          </div>
-        </div>
-      `;
-
-      resultSection.style.display = "block";
-      resultSection.scrollIntoView({ behavior: "smooth" });
-      showToast("⚠️ Cookie expired atau tidak valid", "⚠️");
-    }
-
-    // Generic error card
-    function renderErrorCard({ title, description, causes, suggestion }) {
-      const causesHtml = (causes || []).map(c => `<li>${c}</li>`).join("");
-
-      resultContent.innerHTML = `
-        <div class="card error-card">
-          <div class="error-header">
-            <div class="error-icon-badge">❌</div>
-            <div>
-              <div class="error-title">${title}</div>
-              <div class="error-desc">${description}</div>
-            </div>
-          </div>
-
-          ${causes && causes.length ? `
-            <div class="causes-box">
-              <div class="causes-title">Kemungkinan masalah:</div>
-              <ul class="causes-list">${causesHtml}</ul>
-            </div>
-          ` : ""}
-
-          ${suggestion ? `
-            <div class="error-solution">
-              <span>💡</span>
-              <span>${suggestion}</span>
-            </div>
-          ` : ""}
-
-          <button class="btn btn-secondary" onclick="focusInput()" type="button">
-            🔄 Coba Lagi
-          </button>
-        </div>
-      `;
-
-      resultSection.style.display = "block";
-      resultSection.scrollIntoView({ behavior: "smooth" });
-    }
-
-    // Generic text reply
-    function renderGenericResult(parsedOrResult) {
-      const text = parsedOrResult?.rawText || JSON.stringify(parsedOrResult, null, 2);
-      resultContent.innerHTML = `
-        <div class="card">
-          <div class="card-title">ℹ️ Balasan dari Bot:</div>
-          <pre style="background:var(--bg-input); padding:14px; border-radius:var(--radius-sm); white-space:pre-wrap; word-break:break-word; font-family:'JetBrains Mono'; font-size:0.85rem; border:1px solid var(--border); color:var(--text-main);">${text.replace(/</g, "&lt;")}</pre>
+          <button class="btn btn-secondary btn-sm" onclick="cookieInput.focus()" type="button">🔄 Coba Cookie Lain</button>
         </div>
       `;
       resultSection.style.display = "block";
-      resultSection.scrollIntoView({ behavior: "smooth" });
     }
 
-    window.toggleRaw = () => {
-      const box = $("rawBotReply");
-      if (box) {
-        box.style.display = box.style.display === "block" ? "none" : "block";
-      }
-    };
-
-    window.focusInput = () => {
-      cookieInput.value = "";
-      cookieInput.dispatchEvent(new Event("input"));
-      cookieInput.focus();
-      formCard.scrollIntoView({ behavior: "smooth" });
-    };
-
-    btnReset.addEventListener("click", () => {
-      focusInput();
-      resultSection.style.display = "none";
-    });
-
-    // FAQ toggles
-    document.querySelectorAll(".faq-question").forEach(q => {
+    // FAQ Accordion toggles
+    document.querySelectorAll(".faq-question").forEach((q) => {
       q.addEventListener("click", () => {
-        const item = q.parentElement;
-        item.classList.toggle("open");
+        q.parentElement.classList.toggle("open");
       });
     });
   </script>

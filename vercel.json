@@ -17,9 +17,30 @@
     },
     "api/job-status.js": {
       "maxDuration": 30
+    },
+    "api/claim-status.js": {
+      "maxDuration": 30
+    },
+    "api/redeem.js": {
+      "maxDuration": 30
+    },
+    "api/claim.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
+    {
+      "source": "/api/claim-status",
+      "destination": "/api/claim-status"
+    },
+    {
+      "source": "/api/redeem",
+      "destination": "/api/redeem"
+    },
+    {
+      "source": "/api/claim",
+      "destination": "/api/claim"
+    },
     {
       "source": "/api/generate",
       "destination": "/api/generate"
