@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>iLink Netflix Portal — Klaim Garansi & Token Generator</title>
   <meta name="description" content="Portal Klaim Garansi, Ambil Link Netflix Otomatis (PC/HP/TV), Generator Cookies, dan Daftar Paket." />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-main: #0c0d12;
@@ -738,47 +735,40 @@
       .success-header { flex-direction: column; align-items: flex-start; }
     }
   </style>
+  <link rel="stylesheet" href="/red-room.css" />
 </head>
 <body>
 
   <div class="container">
     <!-- Header -->
-    <header>
-      <div class="brand-badge">
-        <span class="status-dot"></span>
-        <span>iLink Netflix Portal v5.8</span>
-      </div>
-      <h1>🍿 <span>Netflix Token & Garansi</span></h1>
-      <p class="subtitle">
-        Klaim link login Netflix instan (PC, HP, Smart TV), kelola lisensi, dan generator cookies otomatis.
-      </p>
-    </header>
+    <header class="portal-nav"><a class="portal-brand" href="/" aria-label="iLink Netflix Access — beranda"><i></i>iLINK <small>NETFLIX ACCESS</small></a><nav aria-label="Navigasi utama"><a href="#panduan">Cara pakai</a><button type="button" id="navPackages">Paket</button><a class="support-link" href="https://t.me/iLinkinStore" target="_blank" rel="noopener noreferrer">Hubungi admin ↗</a></nav></header>
+    <section class="portal-hero" aria-labelledby="heroTitle"><div><p class="hero-eyebrow">AKSES MILIKMU. LAYAR PILIHANMU.</p><h1 id="heroTitle">Malam ini,<br><span>tinggal play.</span></h1><p class="hero-description">Satu portal untuk cek lisensi, klaim garansi,<br>dan akses di perangkat pilihanmu.</p><p class="hero-steps">01 / CEK KODE <b>→</b> 02 / PILIH PERANGKAT <b>→</b> 03 / BUKA</p></div><img class="cinema-art" src="/cinema.svg" alt="Ilustrasi sinema dengan layar, reel film, dan tiket bertuliskan Just Play" width="520" height="380"></section>
 
     <!-- Top Navigation Tabs: 3 Tab Jelas Terlihat -->
     <div class="tabs-nav">
       <button class="tab-btn active" data-tab="tabClaim" id="tabBtnClaim" type="button">
-        🍿 Klaim & Lisensi
+        <span class="tab-number">01</span> Klaim & akses
       </button>
       <button class="tab-btn" data-tab="tabCookies" id="tabBtnCookies" type="button">
-        🍪 Generator Cookies
+        <span class="tab-number">02</span> Cookies manual
       </button>
       <button class="tab-btn" data-tab="tabPackages" id="tabBtnPackages" type="button">
-        📦 Daftar Paket & Harga
+        <span class="tab-number">03</span> Pilihan paket
       </button>
     </div>
 
     <!-- ======================================================== -->
     <!-- TAB 1: KLAIM & LISENSI TERPADU (1 FORM SMART & RINGKAS)  -->
     <!-- ======================================================== -->
-    <div class="tab-content active" id="tabClaim">
+    <div class="claim-workspace"><div class="portal-panels"><div class="tab-content active" id="tabClaim">
       <div class="card" id="mainClaimCard">
         <div class="card-title">
-          <span>🛡️ Klaim Garansi & Aktivasi Lisensi</span>
+          <div><p class="form-eyebrow">MULAI DARI KODEMU</p><h2>Pintu masuk ke waktu santai.</h2><p class="form-description">Cek masa aktif dan sisa klaim sebelum mengambil akses.</p></div>
         </div>
 
         <div class="form-group">
           <label for="unifiedCodeInput">
-            <span>Masukkan Kode Voucher / Lisensi:</span>
+            <span>Kode voucher / lisensi / Telegram ID</span>
             <span style="font-size:0.8rem; color:#10b981;" id="savedBadge"></span>
           </label>
           <div class="input-row">
@@ -786,16 +776,16 @@
               type="text"
               id="unifiedCodeInput"
               class="text-input"
-              placeholder="Contoh: NETFLIX-ABCD-1234 atau Telegram ID Anda"
+              placeholder="Masukkan kode akses kamu"
               autocomplete="off"
               spellcheck="false"
             />
             <button class="btn btn-primary" id="btnCheckCode" type="button" style="white-space:nowrap;">
-              <span>🔍 Periksa Kode</span>
+              <span>Cek kode & lanjutkan →</span>
             </button>
           </div>
           <small style="color:var(--text-dim); display:block; margin-top:8px; font-size:0.82rem;">
-            💡 Masukkan kode voucher dari Admin. Sistem otomatis mendeteksi voucher baru maupun lisensi aktif, serta menyimpannya di browser ini.
+            Kode tersimpan di browser ini untuk klaim berikutnya.
           </small>
         </div>
 
@@ -1063,10 +1053,12 @@
       </div>
     </div>
 
+    </div><aside class="portal-guide"><p class="hero-eyebrow">SEBELUM LAMPU DIREdupkan</p><h2>Tiga langkah. <br>Lalu, nikmati.</h2><ol><li><strong>Cek kode akses</strong><p>Lihat masa aktif dan kuota harian.</p></li><li><strong>Ambil akses</strong><p>Pilih akun baru atau akun sebelumnya.</p></li><li><strong>Pilih layar</strong><p>Buka link untuk PC, HP, atau TV.</p></li></ol></aside></div>
+    <section class="device-strip" aria-label="Perangkat yang didukung"><p>SATU AKSES.<br>BANYAK CARA MENIKMATI.</p><article><span aria-hidden="true">▱</span><h3>PC / Laptop</h3><p>Layar besar, sesi panjang.</p></article><article><span aria-hidden="true">▯</span><h3>HP / Mobile</h3><p>Lanjut di mana saja.</p></article><article><span aria-hidden="true">▭</span><h3>Smart TV</h3><p>Saatnya ambil sofa.</p></article></section>
     <!-- FAQ Accordion -->
-    <div class="faq-section">
+    <div class="faq-section" id="panduan">
       <div class="faq-title">
-        <span>📖 Panduan & Pertanyaan Umum</span>
+        <span>Panduan & pertanyaan umum</span>
       </div>
 
       <div class="faq-item">
@@ -1113,13 +1105,7 @@
   </div>
 
   <!-- Footer -->
-  <footer>
-    <p>Powered by iLink.in Store — Netflix Automation Portal</p>
-    <p style="margin-top:6px;">
-      <a href="https://t.me/iLinkinStore" target="_blank">Telegram Support</a> • 
-      <a href="/setup-userbot.html" target="_blank">Setup Userbot Session</a>
-    </p>
-  </footer>
+  <footer><div><strong>iLINK / NETFLIX ACCESS</strong><p>Portal independen. Tidak berafiliasi dengan Netflix, Inc.</p></div><div><a href="#panduan">Panduan</a> / <a href="https://t.me/iLinkinStore" target="_blank" rel="noopener noreferrer">Telegram Support ↗</a><p>Less setup. More screen time.</p></div></footer>
 
   <!-- App Script -->
   <script>
@@ -1830,5 +1816,6 @@
       cookieResultSection.style.display = "block";
     }
   </script>
+<script src="/red-room.js" defer></script>
 </body>
 </html>
