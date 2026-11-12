@@ -801,6 +801,184 @@
       .device-actions { grid-template-columns: 1fr; }
       .success-header { flex-direction: column; align-items: flex-start; }
     }
+
+    /* Red Room Modal: Beli di Tempat Kamu Beli */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 8, 10, 0.82);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.22s ease, visibility 0.22s ease;
+    }
+    .modal-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal-card {
+      width: 100%;
+      max-width: 520px;
+      background: #19181b;
+      border: 1px solid #353034;
+      border-radius: 6px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
+      overflow: hidden;
+      color: #f1eee8;
+      transform: translateY(12px) scale(0.97);
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .modal-backdrop.active .modal-card {
+      transform: translateY(0) scale(1);
+    }
+    .modal-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid #302e30;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .modal-header-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      background: #e50914;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .modal-header-text h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #f1eee8;
+      letter-spacing: -0.4px;
+      margin: 0;
+    }
+    .modal-header-text .modal-eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.6px;
+      color: #aaa3a0;
+      margin-bottom: 3px;
+    }
+    .modal-close-btn {
+      background: none;
+      border: 0;
+      color: #aaa3a0;
+      font-size: 22px;
+      cursor: pointer;
+      padding: 2px 6px;
+      line-height: 1;
+      border-radius: 4px;
+      transition: color 0.15s ease, background 0.15s ease;
+    }
+    .modal-close-btn:hover {
+      color: #f1eee8;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .modal-body {
+      padding: 20px 22px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #d5d0ca;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .modal-pkg-banner {
+      padding: 10px 14px;
+      background: #101012;
+      border: 1px solid #353034;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .modal-pkg-banner span:first-child {
+      color: #aaa3a0;
+      font-size: 12px;
+    }
+    .modal-pkg-banner span:last-child {
+      font-weight: 700;
+      color: #f02530;
+      font-size: 13.5px;
+    }
+    .modal-lead {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #f1eee8;
+    }
+    .modal-lead b {
+      color: #f02530;
+    }
+    .modal-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .modal-step-item {
+      padding: 11px 13px;
+      background: #141316;
+      border: 1px solid #302e30;
+      border-radius: 4px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .modal-step-badge {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #242125;
+      color: #f02530;
+      border: 1px solid #353034;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 11px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .modal-step-content strong {
+      display: block;
+      font-size: 13px;
+      color: #f1eee8;
+      margin-bottom: 2px;
+    }
+    .modal-step-content p {
+      font-size: 11.5px;
+      color: #aaa3a0;
+      margin: 0;
+      line-height: 1.45;
+    }
+    .modal-footer {
+      padding: 14px 22px;
+      background: #141316;
+      border-top: 1px solid #302e30;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    button.support-link {
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+    }
   </style>
   <link rel="stylesheet" href="/red-room.css" />
 </head>
@@ -808,7 +986,7 @@
 
   <div class="container">
     <!-- Header -->
-    <header class="portal-nav"><a class="portal-brand" href="/" aria-label="iLink Netflix Access — beranda"><i></i>iLINK <small>NETFLIX ACCESS</small></a><nav aria-label="Navigasi utama"><a href="#panduan">Cara pakai</a><button type="button" id="navPackages">Paket</button><a class="support-link" href="https://t.me/iLinkinStore" target="_blank" rel="noopener noreferrer">Hubungi admin ↗</a></nav></header>
+    <header class="portal-nav"><a class="portal-brand" href="/" aria-label="iLink Netflix Access — beranda"><i></i>iLINK <small>NETFLIX ACCESS</small></a><nav aria-label="Navigasi utama"><a href="#panduan">Cara pakai</a><button type="button" id="navPackages">Paket</button><button type="button" class="support-link" onclick="openBuyModal('Panduan Pembelian')">Cara Beli ↗</button></nav></header>
     <section class="portal-hero" aria-labelledby="heroTitle"><div><p class="hero-eyebrow">AKSES MILIKMU. LAYAR PILIHANMU.</p><h1 id="heroTitle">Malam ini,<br><span>tinggal play.</span></h1><p class="hero-description">Satu portal untuk cek lisensi, klaim garansi,<br>dan akses di perangkat pilihanmu.</p><p class="hero-steps">01 / CEK KODE <b>→</b> 02 / PILIH PERANGKAT <b>→</b> 03 / BUKA</p></div><img class="cinema-art" src="/cinema.svg" alt="Ilustrasi sinema dengan layar, reel film, dan tiket bertuliskan Just Play" width="520" height="380"></section>
 
     <!-- Top Navigation Tabs: 3 Tab Jelas Terlihat -->
@@ -1064,7 +1242,7 @@
           <span>📦 Pilihan Paket Garansi Netflix</span>
         </div>
         <p style="font-size:0.92rem; color:var(--text-muted); margin-bottom:18px;">
-          Pilih paket garansi sesuai kebutuhan Anda. Hubungi Admin Telegram untuk pembayaran via QRIS/Transfer Bank:
+          Pilih paket garansi sesuai kebutuhan Anda. Pembelian atau perpanjangan lisensi dilakukan langsung di toko / penjual tempat Anda membeli:
         </p>
 
         <div class="packages-grid">
@@ -1077,9 +1255,9 @@
               <li>Support PC, Mobile, Smart TV</li>
               <li>Prioritas negara ID, MY, SG</li>
             </ul>
-            <a class="btn btn-secondary btn-sm" href="https://t.me/iLinkinStore" target="_blank">
-              💬 Beli via Admin
-            </a>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="openBuyModal('Paket 1 Hari', 'Rp 5.000')">
+              🛒 Beli Paket
+            </button>
           </div>
 
           <div class="pkg-card">
@@ -1091,9 +1269,9 @@
               <li>Garansi akun aktif</li>
               <li>Support PC, Mobile, Smart TV</li>
             </ul>
-            <a class="btn btn-secondary btn-sm" href="https://t.me/iLinkinStore" target="_blank">
-              💬 Beli via Admin
-            </a>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="openBuyModal('Paket 7 Hari', 'Rp 15.000')">
+              🛒 Beli Paket
+            </button>
           </div>
 
           <div class="pkg-card" style="border-color:rgba(229,9,20,0.5); background:rgba(229,9,20,0.04);">
@@ -1106,9 +1284,9 @@
               <li>Fitur Akun Sama / Perpanjang</li>
               <li>Prioritas server super cepat</li>
             </ul>
-            <a class="btn btn-primary btn-sm" href="https://t.me/iLinkinStore" target="_blank">
-              💬 Beli via Admin
-            </a>
+            <button class="btn btn-primary btn-sm" type="button" onclick="openBuyModal('Paket 30 Hari (1 Bulan)', 'Rp 35.000')">
+              🛒 Beli Paket
+            </button>
           </div>
 
           <div class="pkg-card">
@@ -1120,14 +1298,14 @@
               <li>Garansi seumur hidup</li>
               <li>Akses prioritas tertinggi</li>
             </ul>
-            <a class="btn btn-secondary btn-sm" href="https://t.me/iLinkinStore" target="_blank">
-              💬 Beli via Admin
-            </a>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="openBuyModal('Paket Lifetime (Selamanya)', 'Rp 100.000')">
+              🛒 Beli Paket
+            </button>
           </div>
         </div>
 
         <div style="margin-top:24px; padding:16px; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.88rem; color:var(--text-muted); text-align:center;">
-          💡 <i>Setelah melakukan pembayaran, Admin akan memberikan Kode Voucher. Masukkan kode tersebut di tab <b>Klaim & Lisensi</b> untuk mulai mengambil link Netflix.</i>
+          💡 <i>Setelah melakukan pembelian di toko / penjual tempat Anda membeli, penjual akan memberikan Kode Voucher. Masukkan kode tersebut di tab <b>Klaim & Akses</b> untuk mulai mengambil link Netflix.</i>
         </div>
       </div>
     </div>
@@ -1194,12 +1372,176 @@
     <span id="toastMsg">Tersalin ke clipboard!</span>
   </div>
 
+  <!-- ======================================================== -->
+  <!-- MODAL POPUP: BELI DI TEMPAT KAMU BELI                   -->
+  <!-- ======================================================== -->
+  <div id="buyGuideModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalBuyTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="modal-header-icon">🛍️</div>
+          <div class="modal-header-text">
+            <div class="modal-eyebrow">PANDUAN PEMBELIAN</div>
+            <h3 id="modalBuyTitle">Beli di Toko Tempat Anda Membeli</h3>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeBuyModal()" aria-label="Tutup popup">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-pkg-banner" id="modalPkgBanner">
+          <span>Paket yang dipilih:</span>
+          <span id="modalPkgLabel">Paket 30 Hari — Rp 35.000</span>
+        </div>
+
+        <div class="modal-lead">
+          Untuk membeli paket baru atau memperpanjang masa aktif garansi, silakan <b>lakukan pembelian langsung di toko / penjual tempat Anda membeli sebelumnya</b> (Marketplace, Seller, atau Toko tempat Anda pertama kali mendapatkan layanan ini).
+        </div>
+
+        <div class="modal-steps">
+          <div class="modal-step-item">
+            <span class="modal-step-badge">1</span>
+            <div class="modal-step-content">
+              <strong>Hubungi Toko / Penjual Anda</strong>
+              <p>Buka kembali aplikasi marketplace atau chat seller tempat Anda bertransaksi, lalu order paket yang Anda butuhkan.</p>
+            </div>
+          </div>
+
+          <div class="modal-step-item">
+            <span class="modal-step-badge">2</span>
+            <div class="modal-step-content">
+              <strong>Dapatkan Kode Voucher Lisensi</strong>
+              <p>Setelah pesanan selesai diproses, penjual akan memberikan kode voucher lisensi resmi untuk Anda.</p>
+            </div>
+          </div>
+
+          <div class="modal-step-item">
+            <span class="modal-step-badge">3</span>
+            <div class="modal-step-content">
+              <strong>Masukkan Kode di Tab Klaim & Akses</strong>
+              <p>Masukkan kode voucher di tab <b>Klaim & Akses</b> pada web ini untuk langsung membuka akses Netflix di PC, HP, atau Smart TV.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeBuyModal()" style="min-height:38px; padding:8px 16px;">Tutup</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="goToClaimTabFromModal()" style="min-height:38px; padding:8px 18px;">✓ Saya Sudah Punya Kode</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
-  <footer><div><strong>iLINK / NETFLIX ACCESS</strong><p>Portal independen. Tidak berafiliasi dengan Netflix, Inc.</p></div><div><a href="#panduan">Panduan</a> / <a href="https://t.me/iLinkinStore" target="_blank" rel="noopener noreferrer">Telegram Support ↗</a><p>Less setup. More screen time.</p></div></footer>
+  <footer><div><strong>iLINK / NETFLIX ACCESS</strong><p>Portal independen. Tidak berafiliasi dengan Netflix, Inc.</p></div><div><a href="#panduan">Panduan</a> / <a href="javascript:void(0)" onclick="openBuyModal('Panduan Pembelian')">Panduan Beli ↗</a><p>Less setup. More screen time.</p></div></footer>
 
   <!-- App Script -->
   <script>
     const $ = (id) => document.getElementById(id);
+
+    // ========================================================
+    // NETFLIX AUDIO JINGLE
+    // ========================================================
+    let netflixAudioInstance = null;
+    function getNetflixAudio() {
+      if (!netflixAudioInstance) {
+        netflixAudioInstance = new Audio('/netflix-jingle.mp3');
+        netflixAudioInstance.preload = 'auto';
+        netflixAudioInstance.volume = 0.85;
+      }
+      return netflixAudioInstance;
+    }
+
+    function playNetflixJingle() {
+      try {
+        const audio = getNetflixAudio();
+        audio.currentTime = 0;
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // Browser autoplay restrictions blocked playback before user interaction.
+            // Setup one-time gesture listener so jingle plays on user's first touch/click.
+            const playOnGesture = () => {
+              audio.currentTime = 0;
+              audio.play().catch(() => {});
+              ['click', 'pointerdown', 'touchstart', 'keydown'].forEach((evt) => {
+                window.removeEventListener(evt, playOnGesture, true);
+              });
+            };
+            ['click', 'pointerdown', 'touchstart', 'keydown'].forEach((evt) => {
+              window.addEventListener(evt, playOnGesture, { once: true, capture: true });
+            });
+          });
+        }
+      } catch (e) {
+        console.warn('Audio playback error:', e);
+      }
+    }
+
+    // Play jingle on initial page load / refresh
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', playNetflixJingle);
+    } else {
+      playNetflixJingle();
+    }
+
+    // ========================================================
+    // MODAL POPUP: BELI DI TEMPAT KAMU BELI
+    // ========================================================
+    function openBuyModal(pkgName, pkgPrice) {
+      const banner = $("modalPkgBanner");
+      const label = $("modalPkgLabel");
+      if (pkgName && pkgPrice) {
+        if (label) label.textContent = `${pkgName} — ${pkgPrice}`;
+        if (banner) banner.style.display = "flex";
+      } else if (pkgName) {
+        if (label) label.textContent = pkgName;
+        if (banner) banner.style.display = "flex";
+      } else {
+        if (banner) banner.style.display = "none";
+      }
+      const modal = $("buyGuideModal");
+      if (modal) {
+        modal.classList.add("active");
+        document.body.style.overflow = "hidden";
+      }
+    }
+
+    function closeBuyModal() {
+      const modal = $("buyGuideModal");
+      if (modal) {
+        modal.classList.remove("active");
+        document.body.style.overflow = "";
+      }
+    }
+
+    function goToClaimTabFromModal() {
+      closeBuyModal();
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
+      const btn = $("tabBtnClaim");
+      const content = $("tabClaim");
+      if (btn) btn.classList.add("active");
+      if (content) content.classList.add("active");
+      const accessCodeInput = $("accessCode");
+      if (accessCodeInput) {
+        accessCodeInput.focus();
+        accessCodeInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+
+    // Close on backdrop click & Escape key
+    window.addEventListener("click", (e) => {
+      const modal = $("buyGuideModal");
+      if (modal && e.target === modal) {
+        closeBuyModal();
+      }
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeBuyModal();
+      }
+    });
 
     // Tab Navigation
     document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -1618,6 +1960,7 @@
     }
 
     function renderClaimSuccess(jobData) {
+      playNetflixJingle();
       const parsed = jobData.parsed;
       const result = jobData.result || {};
 
@@ -1918,6 +2261,7 @@
     }
 
     function renderCookieSuccess(jobData) {
+      playNetflixJingle();
       const parsed = jobData.parsed;
       const devices = parsed?.devices || [];
 
