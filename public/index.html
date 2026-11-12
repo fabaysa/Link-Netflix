@@ -983,6 +983,7 @@
   <link rel="stylesheet" href="/red-room.css" />
 </head>
 <body>
+  <audio id="netflixJingleAudio" src="/netflix-jingle.mp3" preload="auto" autoplay></audio>
 
   <div class="container">
     <!-- Header -->
@@ -1440,55 +1441,252 @@
     const $ = (id) => document.getElementById(id);
 
     // ========================================================
-    // NETFLIX AUDIO JINGLE
+    // NETFLIX AUDIO JINGLE CONTROLLER (3 KONDISI RESMI)
+    // 1. Pertama kali buka web / refresh web
+    // 2. Selesai generate URL (Tab 1: Klaim & Akses)
+    // 3. Selesai generate URL dari Cookies (Tab 2: Cookies Manual)
     // ========================================================
-    let netflixAudioInstance = null;
-    function getNetflixAudio() {
-      if (!netflixAudioInstance) {
-        netflixAudioInstance = new Audio('/netflix-jingle.mp3');
-        netflixAudioInstance.preload = 'auto';
-        netflixAudioInstance.volume = 0.85;
+    const JINGLE_URL = "/netflix-jingle.mp3";
+    const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+    const pageLoadTimestamp = Date.now();
+    let jingleAudioCtx = null;
+    let jingleBuffer = null;
+    let jingleBufferPromise = null;
+    let currentBufferSource = null;
+    let audioEngineUnlocked = false;
+    let fallbackAudioPrimed = false;
+    let fallbackActionAudio = null;
+    let initialLoadSoundPlayed = false;
+    let pendingInitialJingle = true;
+
+    function getInitialAudioElement() {
+      let el = document.getElementById("netflixJingleAudio");
+      if (!el) {
+        el = document.createElement("audio");
+        el.id = "netflixJingleAudio";
+        el.src = JINGLE_URL;
+        el.preload = "auto";
+        document.body.appendChild(el);
       }
-      return netflixAudioInstance;
+      el.volume = 0.85;
+      return el;
     }
 
-    function playNetflixJingle() {
+    function getFallbackActionAudio() {
+      if (!fallbackActionAudio) {
+        fallbackActionAudio = new Audio(JINGLE_URL);
+        fallbackActionAudio.preload = "auto";
+        fallbackActionAudio.volume = 0.85;
+      }
+      return fallbackActionAudio;
+    }
+
+    function preloadJingleBuffer() {
+      if (jingleBuffer) return Promise.resolve(jingleBuffer);
+      if (jingleBufferPromise) return jingleBufferPromise;
+      if (!AudioCtxClass) return Promise.resolve(null);
+
+      jingleBufferPromise = fetch(JINGLE_URL)
+        .then((res) => res.arrayBuffer())
+        .then((arrayBuf) => {
+          if (!jingleAudioCtx) {
+            jingleAudioCtx = new AudioCtxClass();
+          }
+          return jingleAudioCtx.decodeAudioData(arrayBuf);
+        })
+        .then((decoded) => {
+          jingleBuffer = decoded;
+          if (!initialLoadSoundPlayed && pendingInitialJingle && Date.now() - pageLoadTimestamp < 2500) {
+            if (jingleAudioCtx && jingleAudioCtx.state === "running") {
+              playNetflixJingle();
+            }
+          }
+          return decoded;
+        })
+        .catch((err) => {
+          console.warn("Decode audio buffer fallback ke HTMLAudioElement:", err);
+          return null;
+        });
+
+      return jingleBufferPromise;
+    }
+
+    // Unlock audio engine secara HENING (0 dB) saat user klik tombol
+    // agar pemutaran async di setInterval (renderClaimSuccess / renderCookieSuccess)
+    // tidak pernah diblokir browser dan TIDAK mengeluarkan bunyi palsu saat klik tab.
+    function unlockAudioSilently() {
       try {
-        const audio = getNetflixAudio();
-        audio.currentTime = 0;
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            // Browser autoplay restrictions blocked playback before user interaction.
-            // Setup one-time gesture listener so jingle plays on user's first touch/click.
-            const playOnGesture = () => {
-              audio.currentTime = 0;
-              audio.play().catch(() => {});
-              ['click', 'pointerdown', 'touchstart', 'keydown'].forEach((evt) => {
-                window.removeEventListener(evt, playOnGesture, true);
-              });
-            };
-            ['click', 'pointerdown', 'touchstart', 'keydown'].forEach((evt) => {
-              window.addEventListener(evt, playOnGesture, { once: true, capture: true });
+        if (AudioCtxClass) {
+          if (!jingleAudioCtx) {
+            jingleAudioCtx = new AudioCtxClass();
+          }
+          if (jingleAudioCtx.state === "suspended") {
+            jingleAudioCtx.resume().catch(() => {});
+          }
+          if (!audioEngineUnlocked && jingleAudioCtx.state === "running") {
+            const silentBuf = jingleAudioCtx.createBuffer(1, 1, 22050);
+            const silentSrc = jingleAudioCtx.createBufferSource();
+            silentSrc.buffer = silentBuf;
+            silentSrc.connect(jingleAudioCtx.destination);
+            silentSrc.start(0);
+            audioEngineUnlocked = true;
+          }
+          preloadJingleBuffer();
+        }
+
+        if (!fallbackAudioPrimed) {
+          fallbackAudioPrimed = true;
+          const fa = getFallbackActionAudio();
+          fa.muted = true;
+          fa.volume = 0;
+          const p = fa.play();
+          if (p !== undefined) {
+            p.then(() => {
+              fa.pause();
+              if (fa.readyState > 0) fa.currentTime = 0;
+              fa.muted = false;
+              fa.volume = 0.85;
+            }).catch(() => {
+              fa.muted = false;
+              fa.volume = 0.85;
+              fallbackAudioPrimed = false;
             });
-          });
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Fungsi pemutar utama Netflix Jingle (TANPA memasang listener klik tunda!)
+    async function playNetflixJingle() {
+      pendingInitialJingle = false;
+      initialLoadSoundPlayed = true;
+
+      try {
+        const initEl = document.getElementById("netflixJingleAudio");
+        if (initEl && !initEl.paused) {
+          initEl.pause();
+          if (initEl.readyState > 0) initEl.currentTime = 0;
+        }
+
+        if (currentBufferSource) {
+          try { currentBufferSource.stop(); } catch (_) {}
+          currentBufferSource = null;
+        }
+
+        if (AudioCtxClass) {
+          if (!jingleAudioCtx) {
+            jingleAudioCtx = new AudioCtxClass();
+          }
+          if (jingleAudioCtx.state === "suspended") {
+            try { await jingleAudioCtx.resume(); } catch (_) {}
+          }
+          const buf = jingleBuffer || (await preloadJingleBuffer());
+          if (jingleAudioCtx.state === "running" && buf) {
+            const source = jingleAudioCtx.createBufferSource();
+            source.buffer = buf;
+            const gainNode = jingleAudioCtx.createGain();
+            gainNode.gain.value = 0.85;
+            source.connect(gainNode);
+            gainNode.connect(jingleAudioCtx.destination);
+            source.start(0);
+            currentBufferSource = source;
+            source.onended = () => {
+              if (currentBufferSource === source) currentBufferSource = null;
+            };
+            return;
+          }
+        }
+
+        const fa = getFallbackActionAudio();
+        if (fa.readyState > 0) {
+          fa.currentTime = 0;
+        }
+        fa.muted = false;
+        fa.volume = 0.85;
+        const p = fa.play();
+        if (p !== undefined) {
+          p.catch(() => {});
         }
       } catch (e) {
-        console.warn('Audio playback error:', e);
+        console.warn("Audio playback error:", e);
       }
     }
 
-    // Play jingle on initial page load / refresh
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', playNetflixJingle);
-    } else {
-      playNetflixJingle();
+    // KONDISI 1: Putar saat pertama kali buka web / refresh web
+    function tryPlayInitialLoadJingle() {
+      if (initialLoadSoundPlayed || !pendingInitialJingle) return;
+      const initEl = getInitialAudioElement();
+
+      if (!initEl.paused && initEl.currentTime > 0) {
+        initialLoadSoundPlayed = true;
+        pendingInitialJingle = false;
+        return;
+      }
+
+      initEl.addEventListener("playing", () => {
+        initialLoadSoundPlayed = true;
+        pendingInitialJingle = false;
+      }, { once: true });
+
+      const playPromise = initEl.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            initialLoadSoundPlayed = true;
+            pendingInitialJingle = false;
+          })
+          .catch(() => {
+            if (jingleAudioCtx && jingleAudioCtx.state === "running" && jingleBuffer && pendingInitialJingle) {
+              playNetflixJingle();
+            }
+          });
+      }
     }
+
+    function onUserActivationEvent(e) {
+      unlockAudioSilently();
+
+      if (!pendingInitialJingle || initialLoadSoundPlayed) return;
+
+      const target = e.target && e.target.closest
+        ? e.target.closest("button, a, input, textarea, select, label, .tab-btn, .tabs-nav, .btn, .faq-question, #tabCookies, #tabPackages, #buyGuideModal")
+        : null;
+
+      // Jangan pernah memutar sound awal ketika user mengklik tab (seperti Cookies Manual), tombol, atau form
+      if (target) {
+        pendingInitialJingle = false;
+        return;
+      }
+
+      if (Date.now() - pageLoadTimestamp < 4000) {
+        pendingInitialJingle = false;
+        playNetflixJingle();
+      } else {
+        pendingInitialJingle = false;
+      }
+    }
+
+    ["click", "mouseup", "touchend", "keyup"].forEach((evt) => {
+      window.addEventListener(evt, onUserActivationEvent, { capture: true, passive: true });
+    });
+
+    preloadJingleBuffer();
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", tryPlayInitialLoadJingle);
+    } else {
+      tryPlayInitialLoadJingle();
+    }
+    window.addEventListener("load", () => {
+      if (!initialLoadSoundPlayed && pendingInitialJingle) {
+        tryPlayInitialLoadJingle();
+      }
+    });
 
     // ========================================================
     // MODAL POPUP: BELI DI TEMPAT KAMU BELI
     // ========================================================
     function openBuyModal(pkgName, pkgPrice) {
+      pendingInitialJingle = false;
       const banner = $("modalPkgBanner");
       const label = $("modalPkgLabel");
       if (pkgName && pkgPrice) {
@@ -1517,16 +1715,18 @@
 
     function goToClaimTabFromModal() {
       closeBuyModal();
-      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
-      document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
       const btn = $("tabBtnClaim");
-      const content = $("tabClaim");
-      if (btn) btn.classList.add("active");
-      if (content) content.classList.add("active");
-      const accessCodeInput = $("accessCode");
-      if (accessCodeInput) {
-        accessCodeInput.focus();
-        accessCodeInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (btn) {
+        btn.click();
+      } else {
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
+        $("tabClaim")?.classList.add("active");
+      }
+      const codeInput = $("unifiedCodeInput");
+      if (codeInput) {
+        codeInput.focus();
+        codeInput.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
 
@@ -1546,6 +1746,8 @@
     // Tab Navigation
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
+        pendingInitialJingle = false;
+        unlockAudioSilently();
         document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
         document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
 
@@ -1843,6 +2045,8 @@
     }
 
     async function executeClaim(mode, country = null) {
+      pendingInitialJingle = false;
+      unlockAudioSilently();
       const code = unifiedCodeInput.value.trim();
       if (!code) {
         alert("Kode voucher / lisensi belum diisi!");
@@ -2161,6 +2365,8 @@
     }
 
     btnSubmitCookie.addEventListener("click", async () => {
+      pendingInitialJingle = false;
+      unlockAudioSilently();
       const payload = cookieInput.value.trim();
       if (!payload) {
         alert("Silakan tempelkan cookies Netflix terlebih dahulu!");
