@@ -24,6 +24,7 @@ export default async function handler(req, res) {
 
   const code = String(req.body?.code || req.body?.license || req.body?.voucher || "").trim();
   const reqMode = String(req.body?.mode || "baru").toLowerCase();
+  const reqCountry = String(req.body?.country || "").toUpperCase().trim();
 
   if (!code) {
     return res.status(400).json({ ok: false, error: "Kode lisensi atau voucher wajib diisi." });
@@ -78,11 +79,11 @@ export default async function handler(req, res) {
         payload = lastAccount.cookies;
         finalMode = "sama";
       } else {
-        payload = "generate";
+        payload = reqCountry ? `generate:${reqCountry}` : "generate";
         finalMode = "baru";
       }
     } else {
-      payload = "generate";
+      payload = reqCountry ? `generate:${reqCountry}` : "generate";
       finalMode = "baru";
     }
 

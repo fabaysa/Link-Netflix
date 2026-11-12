@@ -63,7 +63,8 @@ import {
 } from "../lib/workflow-recorder.js";
 
 import {
-  COUNTRY_NAMES
+  COUNTRY_NAMES,
+  formatCountryButtonLabel
 } from "../lib/country-button-finder.js";
 
 const BOT_NAME = "iLink Netflix Bot";
@@ -335,16 +336,16 @@ async function renderCountryPriorityMenu(chatId, messageId = null) {
     .join("\n");
 
   const text = [
-    "🌏 <b>Pengaturan Urutan Prioritas Negara</b>",
+    "🌏 <b>Pengaturan Daftar Negara Pilihan User & Fallback</b>",
     "",
-    "<b>Urutan Prioritas Saat Ini:</b>",
+    "<b>Daftar Negara yang Aktif Saat Ini:</b>",
     listStr,
     "",
     "━━━━━━━━━━━━━━━━━━",
-    "<b>Sistem Smart Fallback Netflix:</b>",
-    "1️⃣ Bot selalu mencari <b>Prioritas 1</b> terlebih dahulu di semua halaman bot target.",
-    "2️⃣ Jika stok Prioritas 1 habis (0) atau tidak ditemukan, bot otomatis berpindah ke <b>Prioritas 2</b>.",
-    "3️⃣ Jika Prioritas 2 juga habis, otomatis lanjut ke <b>Prioritas 3</b>, dan seterusnya.",
+    "<b>Cara Kerja Pilihan Negara:</b>",
+    "1️⃣ Ketika user klik <b>✨ Akun Baru</b>, bot menampilkan tombol pilihan negara sesuai daftar di atas.",
+    "2️⃣ User dapat memilih negara yang diinginkan (atau tombol <b>🎲 Acak / Random</b>).",
+    "3️⃣ Jika negara yang dipilih user tidak tersedia / stok habis (0), bot otomatis memberikan <b>negara secara acak (random)</b> dari daftar negara yang Anda tentukan di atas.",
     "━━━━━━━━━━━━━━━━━━",
     "",
     "Pilih preset cepat di bawah atau gunakan tombol <b>✏️ Ketik Manual</b>:"
@@ -1081,7 +1082,57 @@ async function handleRedeemCommand(chatId, from, rawCode) {
   }
 }
 
-async function handleAmbilToken(chatId, from, mode = null) {
+async function renderUserCountrySelection(chatId, messageId = null) {
+  const rawCountries = await getSetting("country_priority", ["ID", "MY", "SG"]);
+  const countries = [...new Set(
+    (Array.isArray(rawCountries) && rawCountries.length ? rawCountries : ["ID", "MY", "SG"])
+      .map((c) => String(c || "").toUpperCase().trim())
+      .filter(Boolean)
+  )];
+
+  const text = [
+    "🌍 <b>Pilih Negara Akun Netflix</b>",
+    "",
+    "Silakan pilih negara akun Netflix yang Anda inginkan di bawah ini:",
+    "",
+    "💡 <i>Jika stok negara pilihan Anda sedang kosong, sistem otomatis mencarikan negara lain secara acak dari daftar yang tersedia.</i>"
+  ].join("\n");
+
+  const keyboard = [];
+  for (let i = 0; i < countries.length; i += 2) {
+    const row = [];
+    const c1 = countries[i];
+    row.push({
+      text: formatCountryButtonLabel(c1),
+      callback_data: `ambil_negara:${c1}`
+    });
+    if (countries[i + 1]) {
+      const c2 = countries[i + 1];
+      row.push({
+        text: formatCountryButtonLabel(c2),
+        callback_data: `ambil_negara:${c2}`
+      });
+    }
+    keyboard.push(row);
+  }
+
+  keyboard.push([
+    { text: "🎲 Acak / Random (Lebih Cepat)", callback_data: "ambil_negara:RANDOM" }
+  ]);
+  keyboard.push([
+    { text: "🔙 Kembali ke Menu", callback_data: "start" }
+  ]);
+
+  if (messageId) {
+    try {
+      await editMessage(chatId, messageId, text, { reply_markup: { inline_keyboard: keyboard } });
+      return;
+    } catch {}
+  }
+  await sendMessage(chatId, text, { reply_markup: { inline_keyboard: keyboard } });
+}
+
+async function handleAmbilToken(chatId, from, mode = null, selectedCountry = null, sourceMessageId = null) {
   const isAdminUser = isAdmin(from?.id);
   const requireWarranty = await getSetting("require_warranty", true);
   const warranty = await checkUserWarranty(from?.id);
@@ -1171,11 +1222,7 @@ async function handleAmbilToken(chatId, from, mode = null) {
 
   if (mode === "sama") {
     if (!lastAccount?.cookies) {
-      await sendMessage(
-        chatId,
-        "⚠️ <b>Belum ada akun tersimpan.</b>\nOtomatis mengambil akun Netflix baru..."
-      );
-      return handleAmbilToken(chatId, from, "baru");
+      return renderUserCountrySelection(chatId, sourceMessageId);
     }
 
     const progress = await sendMessage(
@@ -1202,18 +1249,43 @@ async function handleAmbilToken(chatId, from, mode = null) {
     return;
   }
 
-  // mode === "baru"
-  const progress = await sendMessage(
-    chatId,
-    "⏳ <b>Permintaan diterima.</b>\n\nSedang mengambil akun Netflix baru..."
-  );
+  // mode === "baru": jika user belum memilih negara, tampilkan tombol pilihan negara Admin terlebih dahulu!
+  if (!selectedCountry) {
+    return renderUserCountrySelection(chatId, sourceMessageId);
+  }
+
+  const normalizedCountry = String(selectedCountry).toUpperCase().trim();
+  const isRandomChoice = normalizedCountry === "RANDOM" || normalizedCountry === "ACAK";
+  const countryLabel = isRandomChoice
+    ? "🎲 Acak / Random"
+    : `${COUNTRY_NAMES[normalizedCountry] || normalizedCountry} (${normalizedCountry})`;
+
+  let progressId = sourceMessageId;
+  const progressText = [
+    "⚡ <b>Sedang Mengambil Akun Netflix Baru...</b>",
+    "",
+    `🌍 <b>Negara Pilihan:</b> ${esc(countryLabel)}`,
+    "⏳ <i>Mohon tunggu sebentar, link login sedang disiapkan...</i>"
+  ].join("\n");
+
+  if (sourceMessageId) {
+    try {
+      await editMessage(chatId, sourceMessageId, progressText);
+    } catch {
+      const progress = await sendMessage(chatId, progressText);
+      progressId = progress.message_id;
+    }
+  } else {
+    const progress = await sendMessage(chatId, progressText);
+    progressId = progress.message_id;
+  }
 
   const job = await enqueueJob({
     telegramUserId: from?.id,
     chatId,
     inputType: "text",
-    payload: "generate",
-    progressMessageId: progress.message_id,
+    payload: `generate:${normalizedCountry}`,
+    progressMessageId: progressId,
     debugMode: false
   });
 
@@ -1223,7 +1295,7 @@ async function handleAmbilToken(chatId, from, mode = null) {
     })
   );
 
-  console.log(`Queued auto-generate job ${job.id} for user ${from?.id}`);
+  console.log(`Queued auto-generate job ${job.id} (country: ${normalizedCountry}) for user ${from?.id}`);
 }
 
 async function handleHelp(chatId) {
@@ -2480,8 +2552,12 @@ async function handleCallbackQuery(callbackQuery) {
   // User actions
   if (data === "start") return sendStartMenu(chatId, from);
   if (data === "ambil" || data === "generate_cookie") return handleAmbilToken(chatId, from);
-  if (data === "ambil_akun_sama") return handleAmbilToken(chatId, from, "sama");
-  if (data === "ambil_akun_baru") return handleAmbilToken(chatId, from, "baru");
+  if (data === "ambil_akun_sama") return handleAmbilToken(chatId, from, "sama", null, messageId);
+  if (data === "ambil_akun_baru") return handleAmbilToken(chatId, from, "baru", null, messageId);
+  if (data.startsWith("ambil_negara:")) {
+    const chosenCountry = data.replace("ambil_negara:", "").trim();
+    return handleAmbilToken(chatId, from, "baru", chosenCountry, messageId);
+  }
   if (data === "cek") return handleCek(chatId, from);
   if (data === "paket") return handlePaket(chatId);
   if (data === "redeem_info") return handleRedeemCommand(chatId, from, "");

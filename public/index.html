@@ -906,6 +906,18 @@
               <span>🔄 Ambil Akun Sama</span>
             </button>
           </div>
+
+          <!-- Panel Pilihan Negara (Muncul saat klik Ambil Akun Baru) -->
+          <div id="countryPickerPanel" style="display:none; margin-top:16px; padding:16px; background:rgba(229,9,20,0.06); border:1px solid rgba(229,9,20,0.3); border-radius:var(--radius-sm); animation:fadeIn 0.25s ease;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px;">
+              <div style="font-weight:700; font-size:0.92rem; color:#fff;">🌍 Pilih Negara Akun Netflix:</div>
+              <button type="button" id="btnCloseCountryPicker" class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:0.78rem;">✕ Tutup</button>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px; line-height:1.45;">
+              Pilih negara yang Anda inginkan. Jika stok negara tersebut kosong, sistem otomatis memberikan negara secara acak dari daftar yang tersedia:
+            </p>
+            <div id="countryButtonsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(145px, 1fr)); gap:10px;"></div>
+          </div>
         </div>
       </div>
 
@@ -1267,6 +1279,9 @@
     const btnClaimNew = $("btnClaimNew");
     const btnClaimSame = $("btnClaimSame");
     const btnChangeCode = $("btnChangeCode");
+    const countryPickerPanel = $("countryPickerPanel");
+    const countryButtonsGrid = $("countryButtonsGrid");
+    const btnCloseCountryPicker = $("btnCloseCountryPicker");
 
     const claimProgressCard = $("claimProgressCard");
     const claimTimerText = $("claimTimerText");
@@ -1412,13 +1427,59 @@
       }
     }
 
-    // Tombol Klaim Akun Baru
+    function renderCountryButtons(allowedCountries) {
+      if (!countryButtonsGrid) return;
+      const list = Array.isArray(allowedCountries) && allowedCountries.length
+        ? allowedCountries
+        : [
+            { code: "ID", name: "🇮🇩 Indonesia" },
+            { code: "MY", name: "🇲🇾 Malaysia" },
+            { code: "SG", name: "🇸🇬 Singapura" }
+          ];
+
+      countryButtonsGrid.innerHTML = "";
+      list.forEach((item) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-secondary";
+        btn.style.justifyContent = "center";
+        btn.style.fontWeight = "600";
+        btn.innerHTML = `<span>${item.name || item.code}</span>`;
+        btn.addEventListener("click", () => {
+          countryPickerPanel.style.display = "none";
+          executeClaim("baru", item.code);
+        });
+        countryButtonsGrid.appendChild(btn);
+      });
+
+      const randomBtn = document.createElement("button");
+      randomBtn.type = "button";
+      randomBtn.className = "btn btn-primary";
+      randomBtn.style.justifyContent = "center";
+      randomBtn.innerHTML = "<span>🎲 Acak / Random</span>";
+      randomBtn.addEventListener("click", () => {
+        countryPickerPanel.style.display = "none";
+        executeClaim("baru", "RANDOM");
+      });
+      countryButtonsGrid.appendChild(randomBtn);
+    }
+
+    if (btnCloseCountryPicker) {
+      btnCloseCountryPicker.addEventListener("click", () => {
+        countryPickerPanel.style.display = "none";
+      });
+    }
+
+    // Tombol Klaim Akun Baru -> Tampilkan Pilihan Negara
     btnClaimNew.addEventListener("click", () => {
-      executeClaim("baru");
+      renderCountryButtons(currentStatus?.allowedCountries);
+      countryPickerPanel.style.display = "block";
+      countryPickerPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
 
     // Tombol Klaim Akun Sama
     btnClaimSame.addEventListener("click", () => {
+      if (countryPickerPanel) countryPickerPanel.style.display = "none";
       executeClaim("sama");
     });
 
@@ -1439,7 +1500,7 @@
       }
     }
 
-    async function executeClaim(mode) {
+    async function executeClaim(mode, country = null) {
       const code = unifiedCodeInput.value.trim();
       if (!code) {
         alert("Kode voucher / lisensi belum diisi!");
@@ -1447,6 +1508,7 @@
         return;
       }
 
+      if (countryPickerPanel) countryPickerPanel.style.display = "none";
       btnClaimNew.disabled = true;
       btnClaimSame.disabled = true;
 
@@ -1467,7 +1529,7 @@
         if (elapsed >= 1 && elapsed < 3) {
           setClaimStep(1, "done");
           setClaimStep(2, "active");
-        } else if (elapsed >= 4) {
+        } else if (elapsed >= 3) {
           setClaimStep(1, "done");
           setClaimStep(2, "done");
           setClaimStep(3, "active");
@@ -1478,7 +1540,7 @@
         const res = await fetch("/api/claim", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code, mode })
+          body: JSON.stringify({ code, mode, country })
         });
 
         const data = await res.json();
@@ -1552,7 +1614,7 @@
         } catch (e) {
           console.error("Polling error:", e);
         }
-      }, 750);
+      }, 450);
     }
 
     function renderClaimSuccess(jobData) {

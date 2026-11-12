@@ -1,4 +1,5 @@
 import { getClaimStatusByCode, getPackages, getSetting } from "../lib/store.js";
+import { formatCountryButtonLabel } from "../lib/country-button-finder.js";
 
 function setCors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -18,6 +19,27 @@ export default async function handler(req, res) {
 
   let packages = null;
   let supportUsername = "iLinkinStore";
+  let allowedCountries = [
+    { code: "ID", name: formatCountryButtonLabel("ID") },
+    { code: "MY", name: formatCountryButtonLabel("MY") },
+    { code: "SG", name: formatCountryButtonLabel("SG") }
+  ];
+
+  try {
+    const rawCountries = await getSetting("country_priority", ["ID", "MY", "SG"]);
+    const normalized = [...new Set(
+      (Array.isArray(rawCountries) && rawCountries.length ? rawCountries : ["ID", "MY", "SG"])
+        .map((c) => String(c || "").toUpperCase().trim())
+        .filter(Boolean)
+    )];
+    allowedCountries = normalized.map((c) => ({
+      code: c,
+      name: formatCountryButtonLabel(c)
+    }));
+  } catch (e) {
+    console.warn("Failed fetching country_priority:", e);
+  }
+
   if (includePackages) {
     try {
       packages = await getPackages({ onlyEnabled: true });
@@ -32,6 +54,7 @@ export default async function handler(req, res) {
       ok: true,
       packages,
       supportUsername,
+      allowedCountries,
       message: "Silakan masukkan kode lisensi / voucher untuk memeriksa status."
     });
   }
@@ -41,7 +64,8 @@ export default async function handler(req, res) {
     return res.status(status.ok ? 200 : 404).json({
       ...status,
       packages,
-      supportUsername
+      supportUsername,
+      allowedCountries
     });
   } catch (error) {
     console.error("api/claim-status failed:", error);

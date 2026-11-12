@@ -9,6 +9,7 @@ import {
   targetLoginUsername
 } from "../lib/userbot.js";
 import { executeNetflixBridgeFlow } from "../lib/netflix-bridge.js";
+import { parseGeneratePayload } from "../lib/country-button-finder.js";
 import {
   consumeClaimQuota,
   getBridgeAccounts,
@@ -147,10 +148,19 @@ function buildReplyHtml(result) {
 }
 
 function buildNetflixResultHtml(result) {
+  let countryLine = "";
+  if (result.country) {
+    if (result.fallbackUsed && result.requestedCountry) {
+      countryLine = `🌍 <b>Negara:</b> <code>${esc(result.country)}</code> <i>(Stok ${esc(result.requestedCountry)} kosong — dialihkan acak ke ${esc(result.country)})</i>\n`;
+    } else {
+      countryLine = `🌍 <b>Negara:</b> <code>${esc(result.country)}</code>\n`;
+    }
+  }
+
   const lines = [
     "🍿 <b>NETFLIX Login Token Berhasil Digenerate!</b>",
     "",
-    result.country ? `🌍 <b>Negara:</b> <code>${esc(result.country)}</code>\n` : "",
+    countryLine,
     "<b>Pilih link sesuai perangkat Anda:</b>",
     "",
     result.pcUrl ? `🖥️ <b>PC / Laptop:</b>\n<a href="${esc(result.pcUrl)}">${esc(result.pcUrl)}</a>\n` : "",
@@ -340,11 +350,64 @@ async function processOneJob(job) {
     client = connected.client;
 
     const payloadText = String(job.input_payload || "").trim();
-    const isAutoGenerate = !payloadText || /^(generate|ambil|\/ambil|token)$/i.test(payloadText);
+    const { isAutoGenerate, requestedCountry } = parseGeneratePayload(payloadText);
 
     let result = null;
     let lastError = null;
     let successfulTarget = null;
+    let resultDeliveredEarly = false;
+
+    const deliverFinalResult = async (resObj, targetBotName) => {
+      if (resultDeliveredEarly) return;
+      resultDeliveredEarly = true;
+
+      const extractedCookies =
+        resObj.cookies ||
+        extractCookiesFromResult(resObj) ||
+        (payloadText && /NetflixId|\[\s*\{/i.test(payloadText) ? payloadText : null);
+
+      const storedResult = {
+        bridge: "iLink-Netflix-v5.3",
+        target: `@${targetBotName}`,
+        country: resObj.country || null,
+        requestedCountry: resObj.requestedCountry || requestedCountry || null,
+        fallbackUsed: Boolean(resObj.fallbackUsed),
+        pcUrl: resObj.pcUrl || null,
+        mobileUrl: resObj.mobileUrl || null,
+        tvUrl: resObj.tvUrl || null,
+        cookies: extractedCookies,
+        messages: resObj.messages || [],
+        received_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      };
+
+      const tasks = [
+        completeJob(job.id, storedResult, {
+          target_sent_message_id: resObj.sentMessageId || 0,
+          target_result_message_id: resObj.resultMessageId || 0
+        }),
+        sendResultToUser(job, resObj)
+      ];
+
+      if (extractedCookies && job.telegram_user_id) {
+        tasks.push(
+          saveUserLastAccountCookies(job.telegram_user_id, extractedCookies, {
+            country: resObj.country || null,
+            targetBot: targetBotName
+          }).catch((err) => console.warn("saveUserLastAccountCookies failed:", err.message))
+        );
+      }
+
+      if (job.telegram_user_id) {
+        tasks.push(
+          consumeClaimQuota(job.telegram_user_id).catch((err) =>
+            console.warn("consumeClaimQuota failed:", err.message)
+          )
+        );
+      }
+
+      await Promise.all(tasks);
+    };
 
     if (isAutoGenerate) {
       // ═══════════════════════════════════════════════════════════════════════
@@ -361,10 +424,15 @@ async function processOneJob(job) {
 
       for (const botName of candidateBots) {
         try {
-          console.log(`[worker] [AMBIL LINK LOGIN] Menjalankan bridge flow ke @${botName} untuk job ${job.id}`);
+          console.log(`[worker] [AMBIL LINK LOGIN] Menjalankan bridge flow ke @${botName} untuk job ${job.id} (reqCountry: ${requestedCountry || "RANDOM"})`);
           result = await executeNetflixBridgeFlow(client, {
             targetBot: botName,
             countryPriorities: countryPriority,
+            requestedCountry,
+            onResultReady: async (earlyResult) => {
+              successfulTarget = botName;
+              await deliverFinalResult(earlyResult, botName);
+            },
             timeoutMs: 90000
           });
           if (result && (result.pcUrl || result.mobileUrl || result.tvUrl)) {
@@ -377,16 +445,6 @@ async function processOneJob(job) {
         }
       }
       if (!result && lastError) throw lastError;
-
-      // Simpan cookies dari hasil generator akun Netflix jika ada
-      const extractedCookies = result.cookies || extractCookiesFromResult(result);
-      if (extractedCookies && job.telegram_user_id) {
-        console.log(`[worker] Menyimpan cookies akun login untuk user ${job.telegram_user_id}`);
-        await saveUserLastAccountCookies(job.telegram_user_id, extractedCookies, {
-          country: result.country,
-          targetBot: successfulTarget
-        });
-      }
     } else {
       // ═══════════════════════════════════════════════════════════════════════
       // 🍪 2. FITUR GENERATE COOKIES (COOKIE TO LOGIN TOKEN RELAY)
@@ -424,45 +482,11 @@ async function processOneJob(job) {
         result.mobileUrl = result.mobileUrl || parsedReply.mobileUrl || null;
         result.tvUrl = result.tvUrl || parsedReply.tvUrl || null;
       }
-
-      // Jika user mengirimkan cookies langsung atau dari alur akun sama, simpan cookies tersebut
-      const relayCookies = result.cookies || extractCookiesFromResult(result) || (payloadText && /NetflixId|\[\s*\{/i.test(payloadText) ? payloadText : null);
-      if (job.telegram_user_id && relayCookies) {
-        console.log(`[worker] Menyimpan cookies akun relay untuk user ${job.telegram_user_id}`);
-        await saveUserLastAccountCookies(job.telegram_user_id, relayCookies, {
-          targetBot: successfulTarget
-        });
-      }
     }
 
-    const storedResult = {
-      bridge: "iLink-Netflix-v5.3",
-      target: `@${successfulTarget}`,
-      country: result.country || null,
-      pcUrl: result.pcUrl || null,
-      mobileUrl: result.mobileUrl || null,
-      tvUrl: result.tvUrl || null,
-      cookies: result.cookies || extractCookiesFromResult(result) || (payloadText && /NetflixId|\[\s*\{/i.test(payloadText) ? payloadText : null),
-      messages: result.messages || [],
-      received_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
-    };
-
-    await completeJob(job.id, storedResult, {
-      target_sent_message_id: result.sentMessageId || 0,
-      target_result_message_id: result.resultMessageId || 0
-    });
-
-    // Konsumsi kuota garansi jika job berasal dari user Telegram
-    if (job.telegram_user_id) {
-      try {
-        await consumeClaimQuota(job.telegram_user_id);
-      } catch (quotaErr) {
-        console.warn("consumeClaimQuota failed:", quotaErr.message);
-      }
+    if (!resultDeliveredEarly) {
+      await deliverFinalResult(result, successfulTarget);
     }
-
-    await sendResultToUser(job, result);
 
     return {
       ok: true,
