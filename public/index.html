@@ -1456,8 +1456,26 @@
     let audioEngineUnlocked = false;
     let fallbackAudioPrimed = false;
     let fallbackActionAudio = null;
+    let fallbackPrimeToken = 0;
+    let isFallbackPlayingReal = false;
     let initialLoadSoundPlayed = false;
+    let initialAttemptStarted = false;
     let pendingInitialJingle = true;
+    let playRequestSeq = 0;
+    let lastPlayStartedAt = 0;
+    const playedTriggerKeys = new Set();
+
+    function getOrCreateAudioContext() {
+      if (!AudioCtxClass) return null;
+      if (!jingleAudioCtx) {
+        try {
+          jingleAudioCtx = new AudioCtxClass({ latencyHint: "playback" });
+        } catch (_) {
+          jingleAudioCtx = new AudioCtxClass();
+        }
+      }
+      return jingleAudioCtx;
+    }
 
     function getInitialAudioElement() {
       let el = document.getElementById("netflixJingleAudio");
@@ -1489,18 +1507,11 @@
       jingleBufferPromise = fetch(JINGLE_URL)
         .then((res) => res.arrayBuffer())
         .then((arrayBuf) => {
-          if (!jingleAudioCtx) {
-            jingleAudioCtx = new AudioCtxClass();
-          }
-          return jingleAudioCtx.decodeAudioData(arrayBuf);
+          const ctx = getOrCreateAudioContext();
+          return ctx ? ctx.decodeAudioData(arrayBuf) : null;
         })
         .then((decoded) => {
           jingleBuffer = decoded;
-          if (!initialLoadSoundPlayed && pendingInitialJingle && Date.now() - pageLoadTimestamp < 2500) {
-            if (jingleAudioCtx && jingleAudioCtx.state === "running") {
-              playNetflixJingle();
-            }
-          }
           return decoded;
         })
         .catch((err) => {
@@ -1512,38 +1523,47 @@
     }
 
     // Unlock audio engine secara HENING (0 dB) saat user klik tombol
-    // agar pemutaran async di setInterval (renderClaimSuccess / renderCookieSuccess)
-    // tidak pernah diblokir browser dan TIDAK mengeluarkan bunyi palsu saat klik tab.
+    // agar pemutaran async setelah polling (renderClaimSuccess / renderCookieSuccess)
+    // tidak diblokir browser dan TIDAK mengeluarkan bunyi palsu saat klik tab/tombol.
     function unlockAudioSilently() {
       try {
-        if (AudioCtxClass) {
-          if (!jingleAudioCtx) {
-            jingleAudioCtx = new AudioCtxClass();
-          }
-          if (jingleAudioCtx.state === "suspended") {
-            jingleAudioCtx.resume().catch(() => {});
-          }
-          if (!audioEngineUnlocked && jingleAudioCtx.state === "running") {
-            const silentBuf = jingleAudioCtx.createBuffer(1, 1, 22050);
-            const silentSrc = jingleAudioCtx.createBufferSource();
+        const playSilentSample = (audioCtx) => {
+          if (audioEngineUnlocked || audioCtx.state !== "running") return;
+          try {
+            const silentBuf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate || 44100);
+            const silentSrc = audioCtx.createBufferSource();
             silentSrc.buffer = silentBuf;
-            silentSrc.connect(jingleAudioCtx.destination);
+            silentSrc.connect(audioCtx.destination);
             silentSrc.start(0);
             audioEngineUnlocked = true;
+          } catch (_) {}
+        };
+
+        const ctx = getOrCreateAudioContext();
+        if (ctx) {
+          if (ctx.state === "suspended") {
+            ctx.resume().then(() => playSilentSample(ctx)).catch(() => {});
+          } else {
+            playSilentSample(ctx);
           }
           preloadJingleBuffer();
         }
 
-        if (!fallbackAudioPrimed) {
+        const initEl = document.getElementById("netflixJingleAudio");
+        const initCurrentlyPlaying = initEl && !initEl.paused;
+        if (!initCurrentlyPlaying && !fallbackAudioPrimed && !isFallbackPlayingReal) {
           fallbackAudioPrimed = true;
           const fa = getFallbackActionAudio();
+          const myPrimeToken = ++fallbackPrimeToken;
           fa.muted = true;
           fa.volume = 0;
           const p = fa.play();
           if (p !== undefined) {
             p.then(() => {
-              fa.pause();
-              if (fa.readyState > 0) fa.currentTime = 0;
+              if (!isFallbackPlayingReal && myPrimeToken === fallbackPrimeToken) {
+                fa.pause();
+                if (fa.readyState > 0) fa.currentTime = 0;
+              }
               fa.muted = false;
               fa.volume = 0.85;
             }).catch(() => {
@@ -1556,10 +1576,24 @@
       } catch (_) {}
     }
 
-    // Fungsi pemutar utama Netflix Jingle (TANPA memasang listener klik tunda!)
-    async function playNetflixJingle() {
+    // Fungsi pemutar utama Netflix Jingle (anti-duplikat & bebas overlap)
+    async function playNetflixJingle(triggerKey = null) {
       pendingInitialJingle = false;
       initialLoadSoundPlayed = true;
+
+      if (triggerKey && playedTriggerKeys.has(triggerKey)) {
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastPlayStartedAt < 400) {
+        return;
+      }
+      if (triggerKey) {
+        playedTriggerKeys.add(triggerKey);
+      }
+      lastPlayStartedAt = now;
+      const mySeq = ++playRequestSeq;
 
       try {
         const initEl = document.getElementById("netflixJingleAudio");
@@ -1573,22 +1607,25 @@
           currentBufferSource = null;
         }
 
-        if (AudioCtxClass) {
-          if (!jingleAudioCtx) {
-            jingleAudioCtx = new AudioCtxClass();
+        const ctx = getOrCreateAudioContext();
+        if (ctx) {
+          if (ctx.state === "suspended") {
+            try { await ctx.resume(); } catch (_) {}
           }
-          if (jingleAudioCtx.state === "suspended") {
-            try { await jingleAudioCtx.resume(); } catch (_) {}
-          }
+          if (mySeq !== playRequestSeq) return;
+
           const buf = jingleBuffer || (await preloadJingleBuffer());
-          if (jingleAudioCtx.state === "running" && buf) {
-            const source = jingleAudioCtx.createBufferSource();
+          if (mySeq !== playRequestSeq) return;
+
+          if (ctx.state === "running" && buf) {
+            const source = ctx.createBufferSource();
             source.buffer = buf;
-            const gainNode = jingleAudioCtx.createGain();
+            const gainNode = ctx.createGain();
             gainNode.gain.value = 0.85;
             source.connect(gainNode);
-            gainNode.connect(jingleAudioCtx.destination);
-            source.start(0);
+            gainNode.connect(ctx.destination);
+            // Jadwalkan 30ms di depan jam audio hardware agar awal suara bersih tanpa macet
+            source.start(ctx.currentTime + 0.03);
             currentBufferSource = source;
             source.onended = () => {
               if (currentBufferSource === source) currentBufferSource = null;
@@ -1597,15 +1634,24 @@
           }
         }
 
+        if (mySeq !== playRequestSeq) return;
+
         const fa = getFallbackActionAudio();
+        fallbackPrimeToken++;
+        isFallbackPlayingReal = true;
+        if (!fa.paused) {
+          fa.pause();
+        }
         if (fa.readyState > 0) {
           fa.currentTime = 0;
         }
         fa.muted = false;
         fa.volume = 0.85;
+        fa.addEventListener("ended", () => { isFallbackPlayingReal = false; }, { once: true });
+        fa.addEventListener("error", () => { isFallbackPlayingReal = false; }, { once: true });
         const p = fa.play();
         if (p !== undefined) {
-          p.catch(() => {});
+          p.catch(() => { isFallbackPlayingReal = false; });
         }
       } catch (e) {
         console.warn("Audio playback error:", e);
@@ -1614,7 +1660,8 @@
 
     // KONDISI 1: Putar saat pertama kali buka web / refresh web
     function tryPlayInitialLoadJingle() {
-      if (initialLoadSoundPlayed || !pendingInitialJingle) return;
+      if (initialAttemptStarted || initialLoadSoundPlayed || !pendingInitialJingle) return;
+      initialAttemptStarted = true;
       const initEl = getInitialAudioElement();
 
       if (!initEl.paused && initEl.currentTime > 0) {
@@ -1636,9 +1683,7 @@
             pendingInitialJingle = false;
           })
           .catch(() => {
-            if (jingleAudioCtx && jingleAudioCtx.state === "running" && jingleBuffer && pendingInitialJingle) {
-              playNetflixJingle();
-            }
+            // Autoplay diblokir browser; jangan putar saat user mengklik kontrol UI
           });
       }
     }
@@ -1649,18 +1694,18 @@
       if (!pendingInitialJingle || initialLoadSoundPlayed) return;
 
       const target = e.target && e.target.closest
-        ? e.target.closest("button, a, input, textarea, select, label, .tab-btn, .tabs-nav, .btn, .faq-question, #tabCookies, #tabPackages, #buyGuideModal")
+        ? e.target.closest("button, a, input, textarea, select, label, .tab-btn, .tabs-nav, .tab-content, .card, .btn, .faq-question, .modal-backdrop, header, nav, footer")
         : null;
 
-      // Jangan pernah memutar sound awal ketika user mengklik tab (seperti Cookies Manual), tombol, atau form
+      // Jangan pernah memutar sound awal ketika user mengklik tab, kartu, tombol, atau form
       if (target) {
         pendingInitialJingle = false;
         return;
       }
 
-      if (Date.now() - pageLoadTimestamp < 4000) {
+      if (Date.now() - pageLoadTimestamp < 3000) {
         pendingInitialJingle = false;
-        playNetflixJingle();
+        playNetflixJingle("initial-gesture");
       } else {
         pendingInitialJingle = false;
       }
@@ -1676,11 +1721,6 @@
     } else {
       tryPlayInitialLoadJingle();
     }
-    window.addEventListener("load", () => {
-      if (!initialLoadSoundPlayed && pendingInitialJingle) {
-        tryPlayInitialLoadJingle();
-      }
-    });
 
     // ========================================================
     // MODAL POPUP: BELI DI TEMPAT KAMU BELI
@@ -1834,9 +1874,96 @@
 
     const STORAGE_KEY = "ilink_netflix_code";
     let currentStatus = null;
-    let claimPollInterval = null;
     let claimTimerInterval = null;
     let claimStartTime = 0;
+
+    function createJobPoller() {
+      let timeoutId = null;
+      let abortCtrl = null;
+      let sessionId = 0;
+      const handledJobIds = new Set();
+
+      function cancel() {
+        sessionId++;
+        clearTimeout(timeoutId);
+        timeoutId = null;
+        if (abortCtrl) {
+          try { abortCtrl.abort(); } catch (_) {}
+          abortCtrl = null;
+        }
+      }
+
+      function start({ jobId, intervalMs = 450, maxAttempts = 180, onProcessing, onCompleted, onFailed, onTimeout }) {
+        cancel();
+        const mySession = sessionId;
+        let attempts = 0;
+        let settled = false;
+
+        const scheduleNext = (delay = intervalMs) => {
+          if (settled || mySession !== sessionId) return;
+          timeoutId = setTimeout(tick, delay);
+        };
+
+        const tick = async () => {
+          if (settled || mySession !== sessionId) return;
+          attempts++;
+          if (attempts > maxAttempts) {
+            settled = true;
+            cancel();
+            if (onTimeout) onTimeout();
+            return;
+          }
+
+          try {
+            abortCtrl = new AbortController();
+            const res = await fetch(`/api/job-status?id=${encodeURIComponent(jobId)}`, {
+              signal: abortCtrl.signal
+            });
+            if (settled || mySession !== sessionId) return;
+            if (!res.ok) {
+              scheduleNext(Math.max(intervalMs, 650));
+              return;
+            }
+
+            const data = await res.json();
+            if (settled || mySession !== sessionId) return;
+            if (!data.ok) {
+              scheduleNext(Math.max(intervalMs, 650));
+              return;
+            }
+
+            if (data.status === "processing") {
+              if (onProcessing) onProcessing(data);
+              scheduleNext(intervalMs);
+            } else if (data.status === "completed") {
+              settled = true;
+              cancel();
+              if (!handledJobIds.has(jobId)) {
+                handledJobIds.add(jobId);
+                if (onCompleted) onCompleted(data, jobId);
+              }
+            } else if (data.status === "failed") {
+              settled = true;
+              cancel();
+              if (onFailed) onFailed(data);
+            } else {
+              scheduleNext(intervalMs);
+            }
+          } catch (e) {
+            if (e?.name === "AbortError" || settled || mySession !== sessionId) return;
+            console.error("Polling error:", e);
+            scheduleNext(Math.max(intervalMs, 750));
+          }
+        };
+
+        scheduleNext(intervalMs);
+      }
+
+      return { cancel, start };
+    }
+
+    const claimJobPoller = createJobPoller();
+    const cookieJobPoller = createJobPoller();
 
     // Load saved code from LocalStorage
     const storedCode = localStorage.getItem(STORAGE_KEY);
@@ -1847,6 +1974,8 @@
     }
 
     btnCheckCode.addEventListener("click", () => {
+      pendingInitialJingle = false;
+      unlockAudioSilently();
       const code = unifiedCodeInput.value.trim();
       if (!code) {
         alert("Silakan masukkan kode voucher atau ID Telegram Anda!");
@@ -2047,6 +2176,7 @@
     async function executeClaim(mode, country = null) {
       pendingInitialJingle = false;
       unlockAudioSilently();
+      claimJobPoller.cancel();
       const code = unifiedCodeInput.value.trim();
       if (!code) {
         alert("Kode voucher / lisensi belum diisi!");
@@ -2109,7 +2239,7 @@
 
     function stopClaimProgress() {
       clearInterval(claimTimerInterval);
-      clearInterval(claimPollInterval);
+      claimJobPoller.cancel();
       claimProgressCard.style.display = "none";
       btnClaimNew.disabled = false;
       if (currentStatus?.hasSavedAccount) {
@@ -2118,55 +2248,46 @@
     }
 
     function pollClaimJob(jobId, code) {
-      let attempts = 0;
-      claimPollInterval = setInterval(async () => {
-        attempts++;
-        if (attempts > 180) {
+      claimJobPoller.start({
+        jobId,
+        intervalMs: 450,
+        maxAttempts: 180,
+        onProcessing: () => {
+          setClaimStep(1, "done");
+          setClaimStep(2, "done");
+          setClaimStep(3, "active");
+        },
+        onCompleted: (data, completedJobId) => {
+          setClaimStep(1, "done");
+          setClaimStep(2, "done");
+          setClaimStep(3, "done");
+          stopClaimProgress();
+          renderClaimSuccess(data, completedJobId);
+          verifyCode(code, false);
+        },
+        onFailed: (data) => {
+          stopClaimProgress();
+          renderClaimError({
+            title: "Proses Klaim Gagal",
+            description: data.error || "Bot tidak dapat mengambil link Netflix saat ini.",
+            suggestion: "Kemungkinan stok negara sedang kosong. Coba kembali 1-2 menit lagi."
+          });
+        },
+        onTimeout: () => {
           stopClaimProgress();
           renderClaimError({
             title: "Waktu Proses Habis (Timeout)",
             description: "Server membutuhkan waktu lebih lama untuk memproses.",
             suggestion: "Tunggu beberapa saat lalu coba klaim kembali."
           });
-          return;
         }
-
-        try {
-          const res = await fetch(`/api/job-status?id=${encodeURIComponent(jobId)}`);
-          if (!res.ok) return;
-
-          const data = await res.json();
-          if (!data.ok) return;
-
-          if (data.status === "processing") {
-            setClaimStep(1, "done");
-            setClaimStep(2, "done");
-            setClaimStep(3, "active");
-          } else if (data.status === "completed") {
-            setClaimStep(1, "done");
-            setClaimStep(2, "done");
-            setClaimStep(3, "done");
-            stopClaimProgress();
-            renderClaimSuccess(data);
-            verifyCode(code, false);
-          } else if (data.status === "failed") {
-            stopClaimProgress();
-            renderClaimError({
-              title: "Proses Klaim Gagal",
-              description: data.error || "Bot tidak dapat mengambil link Netflix saat ini.",
-              suggestion: "Kemungkinan stok negara sedang kosong. Coba kembali 1-2 menit lagi."
-            });
-          }
-        } catch (e) {
-          console.error("Polling error:", e);
-        }
-      }, 450);
+      });
     }
 
-    function renderClaimSuccess(jobData) {
-      playNetflixJingle();
+    function renderClaimSuccess(jobData, jobId = null) {
       const parsed = jobData.parsed;
       const result = jobData.result || {};
+      const jingleKey = "claim:" + (jobId || jobData.jobId || Date.now());
 
       let devices = parsed?.devices || [];
       if (!devices.length) {
@@ -2178,6 +2299,7 @@
       if (!devices.length) {
         claimResultContent.innerHTML = `<div class="card"><pre style="background:var(--bg-input); padding:14px;">${JSON.stringify(result, null, 2)}</pre></div>`;
         claimResultSection.style.display = "block";
+        playNetflixJingle(jingleKey);
         return;
       }
 
@@ -2266,6 +2388,7 @@
 
       window.lastGeneratedDevices = devices;
       claimResultSection.style.display = "block";
+      playNetflixJingle(jingleKey);
       claimResultSection.scrollIntoView({ behavior: "smooth" });
       showToast("🎉 Link Netflix berhasil dibuat!");
     }
@@ -2314,7 +2437,6 @@
     const cookieResultSection = $("cookieResultSection");
     const cookieResultContent = $("cookieResultContent");
 
-    let cookiePollInterval = null;
     let cookieTimerInterval = null;
     let cookieStartTime = 0;
 
@@ -2367,6 +2489,7 @@
     btnSubmitCookie.addEventListener("click", async () => {
       pendingInitialJingle = false;
       unlockAudioSilently();
+      cookieJobPoller.cancel();
       const payload = cookieInput.value.trim();
       if (!payload) {
         alert("Silakan tempelkan cookies Netflix terlebih dahulu!");
@@ -2425,55 +2548,47 @@
     function stopCookieProgress() {
       btnSubmitCookie.disabled = false;
       clearInterval(cookieTimerInterval);
-      clearInterval(cookiePollInterval);
+      cookieJobPoller.cancel();
       cookieProgressCard.style.display = "none";
     }
 
     function pollCookieJob(jobId) {
-      let attempts = 0;
-      cookiePollInterval = setInterval(async () => {
-        attempts++;
-        if (attempts > 160) {
+      cookieJobPoller.start({
+        jobId,
+        intervalMs: 650,
+        maxAttempts: 160,
+        onProcessing: () => {
+          setCookieStep(1, "done");
+          setCookieStep(2, "done");
+          setCookieStep(3, "active");
+        },
+        onCompleted: (data, completedJobId) => {
+          setCookieStep(1, "done");
+          setCookieStep(2, "done");
+          setCookieStep(3, "done");
+          stopCookieProgress();
+          renderCookieSuccess(data, completedJobId);
+        },
+        onFailed: (data) => {
+          stopCookieProgress();
+          renderCookieError(data.error || "Cookie tidak valid atau kedaluwarsa.");
+        },
+        onTimeout: () => {
           stopCookieProgress();
           renderCookieError("Waktu proses habis. Silakan coba lagi.");
-          return;
         }
-
-        try {
-          const res = await fetch(`/api/job-status?id=${encodeURIComponent(jobId)}`);
-          if (!res.ok) return;
-
-          const data = await res.json();
-          if (!data.ok) return;
-
-          if (data.status === "processing") {
-            setCookieStep(1, "done");
-            setCookieStep(2, "done");
-            setCookieStep(3, "active");
-          } else if (data.status === "completed") {
-            setCookieStep(1, "done");
-            setCookieStep(2, "done");
-            setCookieStep(3, "done");
-            stopCookieProgress();
-            renderCookieSuccess(data);
-          } else if (data.status === "failed") {
-            stopCookieProgress();
-            renderCookieError(data.error || "Cookie tidak valid atau kedaluwarsa.");
-          }
-        } catch (e) {
-          console.error("Cookie polling error:", e);
-        }
-      }, 750);
+      });
     }
 
-    function renderCookieSuccess(jobData) {
-      playNetflixJingle();
+    function renderCookieSuccess(jobData, jobId = null) {
       const parsed = jobData.parsed;
       const devices = parsed?.devices || [];
+      const jingleKey = "cookie:" + (jobId || jobData.jobId || Date.now());
 
       if (!devices.length) {
         cookieResultContent.innerHTML = `<div class="card"><pre style="background:var(--bg-input); padding:14px;">${JSON.stringify(jobData.result, null, 2)}</pre></div>`;
         cookieResultSection.style.display = "block";
+        playNetflixJingle(jingleKey);
         return;
       }
 
@@ -2532,6 +2647,7 @@
         </div>
       `;
       cookieResultSection.style.display = "block";
+      playNetflixJingle(jingleKey);
       cookieResultSection.scrollIntoView({ behavior: "smooth" });
       showToast("🎉 Token berhasil dibuat!");
     }
