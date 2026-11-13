@@ -1723,6 +1723,110 @@
     }
 
     // ========================================================
+    // CUTE UI CLICK SOUND (TOMBOL & MENU)
+    // ========================================================
+    const CUTE_CLICK_SELECTOR = "button, .btn, a.portal-brand, header nav a, .faq-question, footer a";
+    const CUTE_CLICK_COOLDOWN_MS = 65;
+    let lastCuteClickAt = -CUTE_CLICK_COOLDOWN_MS;
+
+    function triggerCutePopNodes(ctx, variant) {
+      if (!ctx || ctx.state !== "running") return;
+      const now = ctx.currentTime;
+      const isMenu = variant === "menu";
+
+      const startFreq = isMenu ? 580 : 480;
+      const endFreq = isMenu ? 980 : 860;
+      const dur = isMenu ? 0.062 : 0.068;
+      const peakGain = isMenu ? 0.14 : 0.16;
+
+      // Bubble pop utama (pitch naik cepat, lembut, bebas klik di akhir envelope)
+      const popOsc = ctx.createOscillator();
+      const popGain = ctx.createGain();
+      popOsc.type = "sine";
+      popOsc.frequency.setValueAtTime(startFreq, now);
+      popOsc.frequency.exponentialRampToValueAtTime(endFreq, now + dur);
+
+      popGain.gain.setValueAtTime(0.0001, now);
+      popGain.gain.linearRampToValueAtTime(peakGain, now + 0.008);
+      popGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+      popOsc.connect(popGain);
+      popGain.connect(ctx.destination);
+      popOsc.onended = () => {
+        try {
+          popOsc.disconnect();
+          popGain.disconnect();
+        } catch {}
+      };
+      popOsc.start(now);
+      popOsc.stop(now + dur + 0.005);
+
+      // Overtone twinkle tipis agar terdengar lebih lucu & renyah
+      const chimeOsc = ctx.createOscillator();
+      const chimeGain = ctx.createGain();
+      const chimeStart = now + 0.012;
+      const chimeDur = 0.052;
+      chimeOsc.type = "sine";
+      chimeOsc.frequency.setValueAtTime(isMenu ? 1320 : 1080, chimeStart);
+      chimeOsc.frequency.exponentialRampToValueAtTime(isMenu ? 1760 : 1440, chimeStart + chimeDur);
+
+      chimeGain.gain.setValueAtTime(0.0001, chimeStart);
+      chimeGain.gain.linearRampToValueAtTime(peakGain * 0.35, chimeStart + 0.006);
+      chimeGain.gain.exponentialRampToValueAtTime(0.0001, chimeStart + chimeDur);
+
+      chimeOsc.connect(chimeGain);
+      chimeGain.connect(ctx.destination);
+      chimeOsc.onended = () => {
+        try {
+          chimeOsc.disconnect();
+          chimeGain.disconnect();
+        } catch {}
+      };
+      chimeOsc.start(chimeStart);
+      chimeOsc.stop(chimeStart + chimeDur + 0.005);
+    }
+
+    function playCuteClickSound(variant = "button") {
+      try {
+        const ctx = getOrCreateAudioContext();
+        if (!ctx || ctx.state === "closed") return;
+        if (ctx.state === "running") {
+          triggerCutePopNodes(ctx, variant);
+          return;
+        }
+        ctx.resume().then(() => {
+          if (ctx.state === "running") {
+            triggerCutePopNodes(ctx, variant);
+          }
+        }).catch(() => {});
+      } catch {}
+    }
+
+    document.addEventListener("click", (e) => {
+      if (!e || !e.isTrusted) return;
+      const rawTarget = e.target;
+      if (!rawTarget || typeof rawTarget.closest !== "function") return;
+      const target = rawTarget.closest(CUTE_CLICK_SELECTOR);
+      if (!target) return;
+      if (
+        target.disabled ||
+        target.getAttribute("aria-disabled") === "true" ||
+        target.closest("[disabled], [aria-disabled='true']")
+      ) {
+        return;
+      }
+
+      const nowMs = typeof performance !== "undefined" && typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+      if (nowMs - lastCuteClickAt < CUTE_CLICK_COOLDOWN_MS) return;
+      lastCuteClickAt = nowMs;
+
+      const isMenu = target.matches(".tab-btn, a.portal-brand, header nav a, .faq-question, footer a");
+      playCuteClickSound(isMenu ? "menu" : "button");
+    }, true);
+
+    // ========================================================
     // MODAL POPUP: BELI DI TEMPAT KAMU BELI
     // ========================================================
     function openBuyModal(pkgName, pkgPrice) {
